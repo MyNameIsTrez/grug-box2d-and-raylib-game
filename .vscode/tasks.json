@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build with gcc",
+      "command": "gcc",
+      "type": "shell",
+      "args": [
+        "main.c",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-Wpedantic",
+        "-Wfatal-errors",
+        "-fsanitize=address,undefined",
+        "-g",
+        "-lraylib",
+        "-lGL",
+        "-lm",
+        "-lpthread",
+        "-ldl",
+        "-lrt",
+        "-lX11"
+      ],
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always"
+      },
+      "group": "build"
+    }
+  ]
+}
