@@ -2,26 +2,23 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build with gcc",
-      "command": "gcc",
+      "label": "rebuild",
+      "command": "make",
       "type": "shell",
       "args": [
-        "main.c",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-        "-Wpedantic",
-        "-Wfatal-errors",
-        "-fsanitize=address,undefined",
-        "-g",
-        "-lraylib",
-        "-lGL",
-        "-lm",
-        "-lpthread",
-        "-ldl",
-        "-lrt",
-        "-lX11"
+        "-C",
+        "build"
       ],
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always"
+      },
+      "group": "build"
+    },
+    {
+      "label": "generate Makefile",
+      "command": "mkdir build && cd build && cmake .. && cd ..",
+      "type": "shell",
       "problemMatcher": ["$tsc"],
       "presentation": {
         "reveal": "always"

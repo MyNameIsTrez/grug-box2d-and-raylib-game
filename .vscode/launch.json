@@ -5,9 +5,9 @@
       "name": "launch with gcc",
       "type": "cppdbg",
       "request": "launch",
-      "cwd": ".",
-      "program": "${workspaceRoot}/a.out",
-      "preLaunchTask": "build with gcc"
+      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/build/game",
+      "preLaunchTask": "rebuild"
     }
   ]
 }
