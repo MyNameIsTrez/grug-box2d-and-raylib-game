@@ -10,6 +10,7 @@ project(game
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+SET(BOX2D_AVX2 OFF CACHE BOOL "Enable AVX2 (faster)")
 FetchContent_Declare(
 	box2d
 	GIT_REPOSITORY https://github.com/erincatto/box2c.git

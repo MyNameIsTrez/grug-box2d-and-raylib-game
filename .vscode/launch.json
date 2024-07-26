@@ -7,7 +7,7 @@
       "request": "launch",
       "cwd": "${workspaceRoot}",
       "program": "${workspaceRoot}/build/game",
-      "preLaunchTask": "rebuild"
+      "preLaunchTask": "Rebuild and run"
     }
   ]
 }
