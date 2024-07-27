@@ -92,7 +92,8 @@ int main(void)
 	int width = 1280, height = 720;
 	InitWindow(width, height, "box2d-raylib");
 
-	SetTargetFPS(60);
+	// SetTargetFPS(60);
+	SetConfigFlags(FLAG_VSYNC_HINT);
 
 	float tileSize = 1.0f;
 	float scale = 50.0f;
@@ -162,6 +163,8 @@ int main(void)
 
 		BeginDrawing();
 		ClearBackground(DARKGRAY);
+
+		DrawFPS(0, 0);
 
 		const char* message = "Hello Box2D!";
 		int fontSize = 36;
