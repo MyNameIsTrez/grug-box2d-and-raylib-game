@@ -29,7 +29,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
-add_executable(game main.c)
+include_directories(grug)
+
+add_executable(game main.c grug/grug.c grug/grug.h)
+target_link_options(game PRIVATE -rdynamic)
 target_link_libraries(game PRIVATE box2d raylib)
 
 if (MSVC)

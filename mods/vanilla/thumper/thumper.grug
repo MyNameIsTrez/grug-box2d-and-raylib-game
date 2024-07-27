@@ -1,0 +1,8 @@
+define() gun {
+    return {
+        .name = "Thumper",
+    }
+}
+
+on_fire(self: i32) {
+}

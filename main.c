@@ -1,8 +1,10 @@
+#include "box2d/box2d.h"
+#include "grug.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "box2d/box2d.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct Conversion
 {
@@ -18,13 +20,25 @@ typedef struct Entity
 	Texture texture;
 } Entity;
 
-Vector2 ConvertWorldToScreen(b2Vec2 p, Conversion cv)
+struct gun {
+	char *name;
+};
+
+static struct gun gun_definition;
+
+void define_gun(char *name) {
+	gun_definition = (struct gun){
+		.name = name,
+	};
+}
+
+static Vector2 ConvertWorldToScreen(b2Vec2 p, Conversion cv)
 {
 	Vector2 result = { cv.scale * p.x + 0.5f * cv.screenWidth, 0.5f * cv.screenHeight - cv.scale * p.y };
 	return result;
 }
 
-void DrawEntity(const Entity* entity, Conversion cv)
+static void DrawEntity(const Entity* entity, Conversion cv)
 {
 	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * cv.tileSize, 0.5f * cv.tileSize });
 	float radians = b2Body_GetAngle(entity->bodyId);
@@ -44,6 +58,33 @@ void DrawEntity(const Entity* entity, Conversion cv)
 	// p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.5f * cv.tileSize, -0.5f * cv.tileSize});
 	// ps = ConvertWorldToScreen(p, cv);
 	// DrawCircleV(ps, 5.0f, RED);
+}
+
+static void reload_grug_entities(void) {
+	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
+		struct grug_modified reload = grug_reloads[reload_index];
+
+		// for (size_t i = 0; i < 2; i++) {
+		// 	if (reload.old_dll == data.human_dlls[i]) {
+		// 		data.human_dlls[i] = reload.new_dll;
+
+		// 		free(data.human_globals[i]);
+		// 		data.human_globals[i] = malloc(reload.globals_size);
+		// 		reload.init_globals_fn(data.human_globals[i]);
+		// 	}
+		// }
+		// for (size_t i = 0; i < 2; i++) {
+		// 	if (reload.old_dll == data.tool_dlls[i]) {
+		// 		data.tool_dlls[i] = reload.new_dll;
+
+		// 		free(data.tool_globals[i]);
+		// 		data.tool_globals[i] = malloc(reload.globals_size);
+		// 		reload.init_globals_fn(data.tool_globals[i]);
+
+		// 		data.tools[i].on_fns = reload.on_fns;
+		// 	}
+		// }
+	}
 }
 
 int main(void)
@@ -101,6 +142,13 @@ int main(void)
 
 	while (!WindowShouldClose())
 	{
+		if (grug_regenerate_modified_mods()) {
+			fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.filename, grug_error.line_number);
+			exit(EXIT_FAILURE);
+		}
+
+		reload_grug_entities();
+
 		if (IsKeyPressed(KEY_P))
 		{
 			pause = !pause;

@@ -1,0 +1,43 @@
+{
+	"entities": {
+		"gun": {
+			"description": "The gun in the center of the screen that the player fires by holding the left mouse button.",
+			"fields": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			],
+			"on_functions": {
+				"on_fire": {
+					"description": "Called when the player holds the left mouse button.",
+					"arguments": [
+						{
+							"name": "self",
+							"type": "i32"
+						}
+					]
+				}
+			}
+		}
+	},
+	"game_functions": {
+		"spawn_bullet": {
+			"description": "Spawns a bullet.",
+			"arguments": [
+				{
+					"name": "name",
+					"type": "string"
+				},
+				{
+					"name": "x",
+					"type": "i32"
+				},
+				{
+					"name": "y",
+					"type": "i32"
+				}
+			]
+		}
+	}
+}
