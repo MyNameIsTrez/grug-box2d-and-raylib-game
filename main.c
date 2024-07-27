@@ -9,7 +9,7 @@
 typedef struct Conversion
 {
 	float scale;
-	float tileSize;
+	float size;
 	float screenWidth;
 	float screenHeight;
 } Conversion;
@@ -40,25 +40,38 @@ static Vector2 ConvertWorldToScreen(b2Vec2 p, Conversion cv)
 
 static void DrawEntity(const Entity* entity, Conversion cv)
 {
-	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * cv.tileSize, 0.5f * cv.tileSize });
+	float textureScale = cv.size * cv.scale / (float)entity->texture.width;
+
+	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * cv.size, 0.5f * cv.size });
+	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { 0, 0 });
+	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * entity->texture.width, 0.5f * entity->texture.height });
+	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, 0.3f });
+	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -1.0f, 1.0f });
 	float radians = b2Body_GetAngle(entity->bodyId);
 
+	// printf("p.x: %f, p.y: %f\n", p.x, p.y);
 	Vector2 ps = ConvertWorldToScreen(p, cv);
 
-	// float textureScale = cv.tileSize * cv.scale / (float)entity->texture.width;
-	float textureScale = 16;
-
+	// Rectangle rect = {0, 0, entity->texture.width * textureScale, entity->texture.height * textureScale};
+	// Vector2 origin = {ps.x, ps.y};
+	Rectangle rect = {ps.x, ps.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
+	Vector2 origin = {0, 0};
+	Color color = {.r=42, .g=42, .b=242, .a=100};
 	// Have to negate rotation to account for y-flip
-	DrawTextureEx(entity->texture, ps, -RAD2DEG * radians, textureScale, WHITE);
+	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
-	// TODO: Use these circles to ensure the coordinate transformation is correct
-	// DrawCircleV(ps, 5.0f, BLACK);
-	// p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.0f, 0.0f});
-	// ps = ConvertWorldToScreen(p, cv);
-	// DrawCircleV(ps, 5.0f, BLUE);
-	// p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.5f * cv.tileSize, -0.5f * cv.tileSize});
-	// ps = ConvertWorldToScreen(p, cv);
-	// DrawCircleV(ps, 5.0f, RED);
+	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, textureScale, WHITE);
+
+	// Use these circles to ensure the coordinate transformation is correct
+	DrawCircleV(ps, 5.0f, BLACK);
+
+	p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.0f, 0.0f});
+	ps = ConvertWorldToScreen(p, cv);
+	DrawCircleV(ps, 5.0f, BLUE);
+
+	p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.5f * cv.size, -0.5f * cv.size});
+	ps = ConvertWorldToScreen(p, cv);
+	DrawCircleV(ps, 5.0f, RED);
 }
 
 static void reload_grug_entities(void) {
@@ -96,27 +109,29 @@ int main(void)
 	// SetTargetFPS(60);
 	SetConfigFlags(FLAG_VSYNC_HINT);
 
-	float tileSize = 1.0f;
-	float scale = 50.0f;
+	float size = 1.0f;
+	float scale = 400.0f;
 
-	Conversion cv = { scale, tileSize, (float)width, (float)height };
+	Conversion cv = { scale, size, (float)width, (float)height };
 
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
 	Texture texture = LoadTexture("mods/vanilla/thumper/thumper.png");
-	// Texture texture = LoadTexture("mods/vanilla/thumper/thumper_scaled_16x.png");
 
-	b2Polygon tilePolygon = b2MakeSquare(0.5f * tileSize);
+	b2Polygon squarePolygon = b2MakeSquare(0.5f * size);
 
 	b2BodyDef bodyDef = b2DefaultBodyDef();
-	bodyDef.type = b2_dynamicBody;
+	bodyDef.type = b2_staticBody;
 	bodyDef.position = (b2Vec2){ 0, 0 };
+	// bodyDef.fixedRotation = true; // TODO: Maybe use?
 	Entity entity;
 	entity.bodyId = b2CreateBody(worldId, &bodyDef);
 	entity.texture = texture;
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	b2CreatePolygonShape(entity.bodyId, &shapeDef, &tilePolygon);
+	b2CreatePolygonShape(entity.bodyId, &shapeDef, &squarePolygon);
+
+	float angle = 0;
 
 	while (!WindowShouldClose())
 	{
@@ -130,8 +145,12 @@ int main(void)
 		float deltaTime = GetFrameTime();
 		b2World_Step(worldId, deltaTime, 4);
 
+		// Let the gun follow the mouse
+		angle += deltaTime;
+		b2Body_SetTransform(entity.bodyId, b2Body_GetPosition(entity.bodyId), angle);
+
 		BeginDrawing();
-		ClearBackground(DARKGRAY);
+		ClearBackground(SKYBLUE);
 
 		DrawFPS(0, 0);
 
@@ -146,108 +165,3 @@ int main(void)
 
 	return 0;
 }
-
-// int main(void)
-// {
-// 	int width = 1280, height = 720;
-// 	InitWindow(width, height, "box2d-raylib");
-
-// 	// SetTargetFPS(60);
-// 	SetConfigFlags(FLAG_VSYNC_HINT);
-
-// 	float tileSize = 1.0f;
-// 	float scale = 50.0f;
-
-// 	Conversion cv = { scale, tileSize, (float)width, (float)height };
-
-// 	b2WorldDef worldDef = b2DefaultWorldDef();
-// 	b2WorldId worldId = b2CreateWorld(&worldDef);
-
-// 	Texture textures[2] = { 0 };
-// 	textures[0] = LoadTexture("ground.png");
-// 	textures[1] = LoadTexture("box.png");
-
-// 	b2Polygon tilePolygon = b2MakeSquare(0.5f * tileSize);
-
-// 	Entity groundEntities[20] = { 0 };
-// 	for (int i = 0; i < 20; ++i)
-// 	{
-// 		Entity* entity = groundEntities + i;
-// 		b2BodyDef bodyDef = b2DefaultBodyDef();
-// 		bodyDef.position = (b2Vec2){ (1.0f * i - 10.0f) * tileSize, -4.5f - 0.5f * tileSize };
-
-// 		// I used this rotation to test the world to screen transformation
-// 		//bodyDef.angle = 0.25f * b2_pi * i;
-
-// 		entity->bodyId = b2CreateBody(worldId, &bodyDef);
-// 		entity->texture = textures[0];
-// 		b2ShapeDef shapeDef = b2DefaultShapeDef();
-// 		b2CreatePolygonShape(entity->bodyId, &shapeDef, &tilePolygon);
-// 	}
-
-// 	Entity boxEntities[10] = { 10 };
-// 	for (int i = 0; i < 10; ++i)
-// 	{
-// 		Entity* entity = boxEntities + i;
-// 		b2BodyDef bodyDef = b2DefaultBodyDef();
-// 		bodyDef.type = b2_dynamicBody;
-// 		bodyDef.position = (b2Vec2){ 0.5f * tileSize * i, -4.0f + tileSize * i };
-// 		entity->bodyId = b2CreateBody(worldId, &bodyDef);
-// 		entity->texture = textures[1];
-// 		b2ShapeDef shapeDef = b2DefaultShapeDef();
-// 		shapeDef.restitution = 0.1f;
-// 		b2CreatePolygonShape(entity->bodyId, &shapeDef, &tilePolygon);
-// 	}
-
-// 	bool pause = false;
-
-// 	while (!WindowShouldClose())
-// 	{
-// 		if (grug_regenerate_modified_mods()) {
-// 			fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.filename, grug_error.line_number);
-// 			exit(EXIT_FAILURE);
-// 		}
-
-// 		reload_grug_entities();
-
-// 		if (IsKeyPressed(KEY_P))
-// 		{
-// 			pause = !pause;
-// 		}
-
-// 		if (pause == false)
-// 		{
-// 			float deltaTime = GetFrameTime();
-// 			b2World_Step(worldId, deltaTime, 4);
-// 		}
-
-// 		BeginDrawing();
-// 		ClearBackground(DARKGRAY);
-
-// 		DrawFPS(0, 0);
-
-// 		const char* message = "Hello Box2D!";
-// 		int fontSize = 36;
-// 		int textWidth = MeasureText("Hello Box2D!", fontSize);
-// 		DrawText(message, (width - textWidth) / 2, 50, fontSize, LIGHTGRAY);
-
-// 		for (int i = 0; i < 20; ++i)
-// 		{
-// 			DrawEntity(groundEntities + i, cv);
-// 		}
-
-// 		for (int i = 0; i < 10; ++i)
-// 		{
-// 			DrawEntity(boxEntities + i, cv);
-// 		}
-
-// 		EndDrawing();
-// 	}
-
-// 	UnloadTexture(textures[0]);
-// 	UnloadTexture(textures[1]);
-
-// 	CloseWindow();
-
-// 	return 0;
-// }
