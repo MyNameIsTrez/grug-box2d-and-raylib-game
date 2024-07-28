@@ -55,8 +55,13 @@ static Vector2 world_to_screen(b2Vec2 p)
 	return result;
 }
 
-static void draw_entity(const Entity* entity, b2Vec2 local_point)
+static void draw_entity(const Entity* entity)
 {
+	b2Vec2 local_point = {
+		-entity->texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
+		entity->texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
+	};
+
 	// Rotates the local_point argument by the entity's angle
 	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
 
@@ -171,20 +176,10 @@ int main(void)
 
 		draw_debug_info();
 
-		draw_entity(&gun, (b2Vec2){
-			-gun_texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
-			gun_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
-		});
+		draw_entity(&gun);
 
 		for (size_t i = 0; i < bullets_size; i++) {
-			draw_entity(bullets + i, (b2Vec2){
-				-bullet_texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
-				bullet_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
-			});
-			// draw_entity(bullets + i, (b2Vec2){
-			// 	-0.5f,
-			// 	(float)bullet_texture.height / bullet_texture.width / 2
-			// });
+			draw_entity(bullets + i);
 		}
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
