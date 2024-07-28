@@ -1,4 +1,8 @@
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wstrict-prototypes"
 #include "box2d/box2d.h"
+#pragma GCC diagnostic pop
+
 #include "grug.h"
 #include "raylib.h"
 #include "raymath.h"
@@ -6,13 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Conversion
-{
-	float scale;
-	float size;
-	float screenWidth;
-	float screenHeight;
-} Conversion;
+static int width = 1280;
+static int height = 720;
+static float scale = 200.0f;
 
 typedef struct Entity
 {
@@ -32,51 +32,25 @@ void define_gun(char *name) {
 	};
 }
 
-static Vector2 ConvertWorldToScreen(b2Vec2 p, Conversion cv)
+static void DrawEntity(const Entity* entity)
 {
-	Vector2 result = { cv.scale * p.x + 0.5f * cv.screenWidth, 0.5f * cv.screenHeight - cv.scale * p.y };
-	return result;
-}
+	float textureScale = scale / entity->texture.width;
 
-static void DrawEntity(const Entity* entity, Conversion cv)
-{
-	float textureScale = cv.size * cv.scale / (float)entity->texture.width;
-
-	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * cv.size, 0.5f * cv.size });
-	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { 0, 0 });
-	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f * entity->texture.width, 0.5f * entity->texture.height });
-	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, 0.3f });
-	// b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -1.0f, 1.0f });
+	b2Vec2 pos = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, (float)entity->texture.height / entity->texture.width / 2 });
 	float radians = b2Body_GetAngle(entity->bodyId);
 
-	// printf("p.x: %f, p.y: %f\n", p.x, p.y);
-	Vector2 ps = ConvertWorldToScreen(p, cv);
-
-	// Rectangle rect = {0, 0, entity->texture.width * textureScale, entity->texture.height * textureScale};
-	// Vector2 origin = {ps.x, ps.y};
-	Rectangle rect = {ps.x, ps.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
+	Rectangle rect = {pos.x, pos.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
 	Vector2 origin = {0, 0};
 	Color color = {.r=42, .g=42, .b=242, .a=100};
-	// Have to negate rotation to account for y-flip
 	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
-	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, textureScale, WHITE);
-
-	// Use these circles to ensure the coordinate transformation is correct
-	DrawCircleV(ps, 5.0f, BLACK);
-
-	p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.0f, 0.0f});
-	ps = ConvertWorldToScreen(p, cv);
-	DrawCircleV(ps, 5.0f, BLUE);
-
-	p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2){0.5f * cv.size, -0.5f * cv.size});
-	ps = ConvertWorldToScreen(p, cv);
-	DrawCircleV(ps, 5.0f, RED);
+	Vector2 posRaylib = {.x=pos.x, .y=pos.y};
+	DrawTextureEx(entity->texture, posRaylib, -radians * RAD2DEG, textureScale, WHITE);
 }
 
 static void reload_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
-		struct grug_modified reload = grug_reloads[reload_index];
+		// struct grug_modified reload = grug_reloads[reload_index];
 
 		// for (size_t i = 0; i < 2; i++) {
 		// 	if (reload.old_dll == data.human_dlls[i]) {
@@ -103,35 +77,28 @@ static void reload_grug_entities(void) {
 
 int main(void)
 {
-	int width = 1280, height = 720;
 	InitWindow(width, height, "box2d-raylib");
 
 	// SetTargetFPS(60);
 	SetConfigFlags(FLAG_VSYNC_HINT);
 
-	float size = 1.0f;
-	float scale = 400.0f;
-
-	Conversion cv = { scale, size, (float)width, (float)height };
-
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
+	// Texture texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
+	// Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
 	Texture texture = LoadTexture("mods/vanilla/thumper/thumper.png");
-
-	b2Polygon squarePolygon = b2MakeSquare(0.5f * size);
 
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_staticBody;
-	bodyDef.position = (b2Vec2){ 0, 0 };
+	bodyDef.position = (b2Vec2){ width / 2, height / 2 };
 	// bodyDef.fixedRotation = true; // TODO: Maybe use?
 	Entity entity;
 	entity.bodyId = b2CreateBody(worldId, &bodyDef);
 	entity.texture = texture;
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
+	b2Polygon squarePolygon = b2MakeBox(0.5f, 0.5f); // TODO: width is normally != height
 	b2CreatePolygonShape(entity.bodyId, &shapeDef, &squarePolygon);
-
-	float angle = 0;
 
 	while (!WindowShouldClose())
 	{
@@ -145,16 +112,25 @@ int main(void)
 		float deltaTime = GetFrameTime();
 		b2World_Step(worldId, deltaTime, 4);
 
-		// Let the gun follow the mouse
-		angle += deltaTime;
-		b2Body_SetTransform(entity.bodyId, b2Body_GetPosition(entity.bodyId), angle);
+		// TODO: Fire bullet
+		// if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+
+		b2Vec2 gunPos = b2Body_GetPosition(entity.bodyId);
+		Vector2 mousePos = GetMousePosition();
+		Color red = {.r=242, .g=42, .b=42, .a=255};
+		DrawLine(gunPos.x, gunPos.y, mousePos.x, mousePos.y, red);
+
+		Vector2 gunPosRaylib = {.x=gunPos.x, .y=gunPos.y};
+		Vector2 gunToMouse = Vector2Subtract(mousePos, gunPosRaylib);
+		float angle = atan2(-gunToMouse.y, gunToMouse.x);
+		b2Body_SetTransform(entity.bodyId, gunPos, angle);
 
 		BeginDrawing();
 		ClearBackground(SKYBLUE);
 
 		DrawFPS(0, 0);
 
-		DrawEntity(&entity, cv);
+		DrawEntity(&entity);
 
 		EndDrawing();
 	}
