@@ -12,7 +12,7 @@
 
 static int width = 1280;
 static int height = 720;
-static float scale = 200.0f;
+static float scale = 5.0f;
 
 typedef struct Entity
 {
@@ -34,18 +34,16 @@ void define_gun(char *name) {
 
 static void DrawEntity(const Entity* entity)
 {
-	float textureScale = scale / entity->texture.width;
-
-	b2Vec2 pos = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, (float)entity->texture.height / entity->texture.width / 2 });
+	b2Vec2 pos = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { 0.0f, -33.0f });
 	float radians = b2Body_GetAngle(entity->bodyId);
 
-	Rectangle rect = {pos.x, pos.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
+	Rectangle rect = {pos.x, pos.y, entity->texture.width * scale, entity->texture.height * scale};
 	Vector2 origin = {0, 0};
 	Color color = {.r=42, .g=42, .b=242, .a=100};
 	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
 	Vector2 posRaylib = {.x=pos.x, .y=pos.y};
-	DrawTextureEx(entity->texture, posRaylib, -radians * RAD2DEG, textureScale, WHITE);
+	DrawTextureEx(entity->texture, posRaylib, -radians * RAD2DEG, scale, WHITE);
 }
 
 static void reload_grug_entities(void) {
