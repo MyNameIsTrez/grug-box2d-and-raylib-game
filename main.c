@@ -14,7 +14,7 @@
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
 #define SCALE 100.0f
-// #define SCALE 10.0f
+#define TEXTURE_SCALE 3.0f
 
 typedef struct Entity
 {
@@ -65,6 +65,23 @@ static void spawn_bullet(b2WorldId worldId, Texture texture) {
 	bullets[bullets_size++] = bullet;
 }
 
+static Entity spawn_gun(b2WorldId worldId, Texture texture) {
+	b2BodyDef bodyDef = b2DefaultBodyDef();
+	bodyDef.type = b2_staticBody;
+	bodyDef.position = (b2Vec2){ 2, 0 };
+	// bodyDef.fixedRotation = true; // TODO: Maybe use?
+
+	Entity gun;
+	gun.bodyId = b2CreateBody(worldId, &bodyDef);
+	gun.texture = texture;
+
+	b2ShapeDef shapeDef = b2DefaultShapeDef();
+	b2Polygon polygon = b2MakeBox(42.0f, 42.0f); // TODO: Use the texture's width and height?
+	b2CreatePolygonShape(gun.bodyId, &shapeDef, &polygon);
+
+	return gun;
+}
+
 static Vector2 convert_world_to_screen(b2Vec2 p)
 {
 	Vector2 result = { SCALE * p.x + 0.5f * SCREEN_WIDTH, 0.5f * SCREEN_HEIGHT - SCALE * p.y };
@@ -73,19 +90,17 @@ static Vector2 convert_world_to_screen(b2Vec2 p)
 
 static void draw_entity(const Entity* entity, b2Vec2 local_point)
 {
-	float textureScale = SCALE / entity->texture.width;
-	// float textureScale = SCALE;
-
 	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
 	Vector2 ps = convert_world_to_screen(p);
 
-	Rectangle rect = {ps.x, ps.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
-	Vector2 origin = {0, 0};
 	float radians = b2Body_GetAngle(entity->bodyId);
+
+	Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
+	Vector2 origin = {0, 0};
 	Color color = {.r=42, .g=42, .b=242, .a=100};
 	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
-	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, textureScale, WHITE);
+	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
 }
 
 static void reload_grug_entities(void) {
@@ -130,21 +145,9 @@ int main(void)
 	// Texture texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture texture = LoadTexture("mods/vanilla/m79/m79.png");
 	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
+	Entity gun = spawn_gun(worldId, gun_texture);
 
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
-
-	b2BodyDef bodyDef = b2DefaultBodyDef();
-	bodyDef.type = b2_staticBody;
-	bodyDef.position = (b2Vec2){ 2, 0 };
-	// bodyDef.fixedRotation = true; // TODO: Maybe use?
-
-	Entity entity;
-	entity.bodyId = b2CreateBody(worldId, &bodyDef);
-	entity.texture = gun_texture;
-
-	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	b2Polygon polygon = b2MakeBox(42.0f, 42.0f); // TODO: Use the texture's width and height?
-	b2CreatePolygonShape(entity.bodyId, &shapeDef, &polygon);
 
 	while (!WindowShouldClose())
 	{
@@ -164,20 +167,20 @@ int main(void)
 
 		// Let the gun follow the mouse
 		Vector2 mousePos = GetMousePosition();
-		b2Vec2 gunWorldPos = b2Body_GetPosition(entity.bodyId);
+		b2Vec2 gunWorldPos = b2Body_GetPosition(gun.bodyId);
 		Vector2 gunScreenPos = convert_world_to_screen(gunWorldPos);
 		Vector2 gunToMouse = Vector2Subtract(mousePos, gunScreenPos);
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
 		float angle = atan2(-gunToMouse.y, gunToMouse.x);
-		b2Body_SetTransform(entity.bodyId, gunWorldPos, angle);
+		b2Body_SetTransform(gun.bodyId, gunWorldPos, angle);
 
 		BeginDrawing();
 		ClearBackground(SKYBLUE);
 
 		draw_debug_info();
 
-		draw_entity(&entity, (b2Vec2){
+		draw_entity(&gun, (b2Vec2){
 			-0.5f,
 			(float)gun_texture.height / gun_texture.width / 2
 		});
