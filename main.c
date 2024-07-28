@@ -16,7 +16,8 @@
 #define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 2.0f // In m/s
-#define GROUND_ENTITY_COUNT 50
+#define GROUND_ENTITY_COUNT 16
+#define CRATE_ENTITY_COUNT 16
 
 typedef struct Entity
 {
@@ -32,6 +33,7 @@ static Entity bullets[MAX_BULLETS];
 static size_t bullets_size;
 
 static Entity ground_entities[GROUND_ENTITY_COUNT];
+static Entity crate_entities[CRATE_ENTITY_COUNT];
 
 static struct gun gun_definition;
 
@@ -119,13 +121,34 @@ static Entity spawn_gun(b2Vec2 pos, b2WorldId worldId, Texture texture) {
 	return gun;
 }
 
+static void spawn_crates(b2WorldId worldId) {
+	Texture texture = LoadTexture("mods/vanilla/crate.png");
+
+	float width_meters  = texture.width  / PIXELS_PER_METER;
+	float height_meters = texture.height / PIXELS_PER_METER;
+
+	b2Polygon polygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
+
+	for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
+		Entity* entity = crate_entities + i;
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.type = b2_dynamicBody;
+		bodyDef.position = (b2Vec2){ -100.0f / PIXELS_PER_METER, (i - CRATE_ENTITY_COUNT / 2) * height_meters + 3.0f };
+
+		entity->bodyId = b2CreateBody(worldId, &bodyDef);
+		entity->texture = texture;
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		b2CreatePolygonShape(entity->bodyId, &shapeDef, &polygon);
+	}
+}
+
 static void spawn_ground(b2WorldId worldId) {
-	Texture ground_texture = LoadTexture("ground.png");
+	Texture texture = LoadTexture("mods/vanilla/concrete.png");
 
-	float width_meters  = ground_texture.width  / PIXELS_PER_METER;
-	float height_meters = ground_texture.height / PIXELS_PER_METER;
+	float width_meters  = texture.width  / PIXELS_PER_METER;
+	float height_meters = texture.height / PIXELS_PER_METER;
 
-	b2Polygon groundPolygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
+	b2Polygon polygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
 
 	for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
 		Entity* entity = ground_entities + i;
@@ -133,9 +156,9 @@ static void spawn_ground(b2WorldId worldId) {
 		bodyDef.position = (b2Vec2){ (i - GROUND_ENTITY_COUNT / 2) * width_meters, -100.0f / PIXELS_PER_METER };
 
 		entity->bodyId = b2CreateBody(worldId, &bodyDef);
-		entity->texture = ground_texture;
+		entity->texture = texture;
 		b2ShapeDef shapeDef = b2DefaultShapeDef();
-		b2CreatePolygonShape(entity->bodyId, &shapeDef, &groundPolygon);
+		b2CreatePolygonShape(entity->bodyId, &shapeDef, &polygon);
 	}
 }
 
@@ -157,6 +180,8 @@ int main(void)
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
+	Texture background_texture = LoadTexture("mods/vanilla/background.png");
+
 	// Texture gun_texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/long/long.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
@@ -168,6 +193,8 @@ int main(void)
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
 	spawn_ground(worldId);
+
+	spawn_crates(worldId);
 
 	while (!WindowShouldClose()) {
 		if (grug_regenerate_modified_mods()) {
@@ -200,13 +227,16 @@ int main(void)
 		b2Body_SetTransform(gun.bodyId, gunWorldPos, gunAngle);
 
 		BeginDrawing();
-		ClearBackground(SKYBLUE);
+
+		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
 
 		for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
 			draw_entity(ground_entities + i);
 		}
 
-		draw_debug_info();
+		for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
+			draw_entity(crate_entities + i);
+		}
 
 		draw_entity(&gun);
 
@@ -216,6 +246,8 @@ int main(void)
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
+
+		draw_debug_info();
 
 		EndDrawing();
 	}
