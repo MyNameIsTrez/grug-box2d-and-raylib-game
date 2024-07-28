@@ -13,8 +13,10 @@
 #define MAX_BULLETS 420
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define SCALE 100.0f
-#define TEXTURE_SCALE 3.0f
+// #define SCALE 100.0f
+#define SCALE 1.0f
+// #define TEXTURE_SCALE 3.0f
+#define TEXTURE_SCALE 1.0f
 
 typedef struct Entity
 {
@@ -49,10 +51,10 @@ static void draw_debug_info(void) {
 	draw_mspf(0, 20);
 }
 
-static void spawn_bullet(b2WorldId worldId, Texture texture) {
+static void spawn_bullet(b2Vec2 pos, b2WorldId worldId, Texture texture) {
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_dynamicBody;
-	bodyDef.position = (b2Vec2){ 2, 0 };
+	bodyDef.position = pos;
 
 	Entity bullet;
 	bullet.bodyId = b2CreateBody(worldId, &bodyDef);
@@ -65,10 +67,10 @@ static void spawn_bullet(b2WorldId worldId, Texture texture) {
 	bullets[bullets_size++] = bullet;
 }
 
-static Entity spawn_gun(b2WorldId worldId, Texture texture) {
+static Entity spawn_gun(b2Vec2 pos, b2WorldId worldId, Texture texture) {
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_staticBody;
-	bodyDef.position = (b2Vec2){ 2, 0 };
+	bodyDef.position = pos;
 	// bodyDef.fixedRotation = true; // TODO: Maybe use?
 
 	Entity gun;
@@ -90,7 +92,9 @@ static Vector2 convert_world_to_screen(b2Vec2 p)
 
 static void draw_entity(const Entity* entity, b2Vec2 local_point)
 {
+	// Rotates the local_point argument by the entity's angle
 	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
+
 	Vector2 ps = convert_world_to_screen(p);
 
 	float radians = b2Body_GetAngle(entity->bodyId);
@@ -101,6 +105,7 @@ static void draw_entity(const Entity* entity, b2Vec2 local_point)
 	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
 	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
+	// DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, 1, WHITE);
 }
 
 static void reload_grug_entities(void) {
@@ -140,12 +145,13 @@ int main(void)
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
-	// Texture texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
-	// Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
-	// Texture texture = LoadTexture("mods/vanilla/m60/m60.png");
-	// Texture texture = LoadTexture("mods/vanilla/m79/m79.png");
-	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
-	Entity gun = spawn_gun(worldId, gun_texture);
+	// Texture gun_texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
+	Texture gun_texture = LoadTexture("mods/vanilla/long/long.png");
+	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
+	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
+	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
+	// Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
+	Entity gun = spawn_gun((b2Vec2){ 300, 0 }, worldId, gun_texture);
 
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
@@ -162,16 +168,14 @@ int main(void)
 		b2World_Step(worldId, deltaTime, 4);
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			spawn_bullet(worldId, bullet_texture);
+			spawn_bullet((b2Vec2){ 4, 0 }, worldId, bullet_texture);
 		}
 
-		// Let the gun follow the mouse
+		// Let the gun point to the mouse
 		Vector2 mousePos = GetMousePosition();
 		b2Vec2 gunWorldPos = b2Body_GetPosition(gun.bodyId);
 		Vector2 gunScreenPos = convert_world_to_screen(gunWorldPos);
 		Vector2 gunToMouse = Vector2Subtract(mousePos, gunScreenPos);
-		Color red = {.r=242, .g=42, .b=42, .a=255};
-		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
 		float angle = atan2(-gunToMouse.y, gunToMouse.x);
 		b2Body_SetTransform(gun.bodyId, gunWorldPos, angle);
 
@@ -181,8 +185,8 @@ int main(void)
 		draw_debug_info();
 
 		draw_entity(&gun, (b2Vec2){
-			-0.5f,
-			(float)gun_texture.height / gun_texture.width / 2
+			-gun_texture.width / 2.0f,
+			gun_texture.height / 2.0f
 		});
 
 		for (size_t i = 0; i < bullets_size; i++) {
@@ -191,6 +195,9 @@ int main(void)
 				(float)bullet_texture.height / bullet_texture.width / 2
 			});
 		}
+
+		Color red = {.r=242, .g=42, .b=42, .a=255};
+		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
 
 		EndDrawing();
 	}
