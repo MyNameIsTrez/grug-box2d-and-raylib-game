@@ -10,10 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_BULLETS 420
+#define MAX_BULLETS 420420
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
 #define TEXTURE_SCALE 1.0f
+#define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 
 typedef struct Entity
 {
@@ -48,6 +49,29 @@ static void draw_debug_info(void) {
 	draw_mspf(0, 20);
 }
 
+static Vector2 world_to_screen(b2Vec2 p)
+{
+	Vector2 result = { p.x * PIXELS_PER_METER + SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f - p.y * PIXELS_PER_METER };
+	return result;
+}
+
+static void draw_entity(const Entity* entity, b2Vec2 local_point)
+{
+	// Rotates the local_point argument by the entity's angle
+	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
+
+	Vector2 ps = world_to_screen(p);
+
+	float radians = b2Body_GetAngle(entity->bodyId);
+
+	Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
+	Vector2 origin = {0, 0};
+	Color color = {.r=42, .g=42, .b=242, .a=100};
+	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
+
+	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
+}
+
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId worldId, Texture texture) {
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_dynamicBody;
@@ -60,7 +84,7 @@ static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId wor
 	bullet.texture = texture;
 
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	b2Polygon polygon = b2MakeBox(texture.width / 2, texture.height / 2);
+	b2Polygon polygon = b2MakeBox(texture.width / 2.0f / PIXELS_PER_METER, texture.height / 2.0f / PIXELS_PER_METER);
 	b2CreatePolygonShape(bullet.bodyId, &shapeDef, &polygon);
 
 	bullets[bullets_size++] = bullet;
@@ -77,33 +101,10 @@ static Entity spawn_gun(b2Vec2 pos, b2WorldId worldId, Texture texture) {
 	gun.texture = texture;
 
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	b2Polygon polygon = b2MakeBox(texture.width / 2, texture.height / 2);
+	b2Polygon polygon = b2MakeBox(texture.width / 2.0f / PIXELS_PER_METER, texture.height / 2.0f / PIXELS_PER_METER);
 	b2CreatePolygonShape(gun.bodyId, &shapeDef, &polygon);
 
 	return gun;
-}
-
-static Vector2 convert_world_to_screen(b2Vec2 p)
-{
-	Vector2 result = { p.x + 0.5f * SCREEN_WIDTH, 0.5f * SCREEN_HEIGHT - p.y };
-	return result;
-}
-
-static void draw_entity(const Entity* entity, b2Vec2 local_point)
-{
-	// Rotates the local_point argument by the entity's angle
-	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
-
-	Vector2 ps = convert_world_to_screen(p);
-
-	float radians = b2Body_GetAngle(entity->bodyId);
-
-	Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
-	Vector2 origin = {0, 0};
-	Color color = {.r=42, .g=42, .b=242, .a=100};
-	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
-
-	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
 }
 
 static void reload_grug_entities(void) {
@@ -130,7 +131,7 @@ int main(void)
 	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
-	Entity gun = spawn_gun((b2Vec2){ 300, 0 }, worldId, gun_texture);
+	Entity gun = spawn_gun((b2Vec2){ 250.0f / PIXELS_PER_METER, 0 }, worldId, gun_texture);
 
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
@@ -148,17 +149,17 @@ int main(void)
 
 		Vector2 mousePos = GetMousePosition();
 		b2Vec2 gunWorldPos = b2Body_GetPosition(gun.bodyId);
-		Vector2 gunScreenPos = convert_world_to_screen(gunWorldPos);
+		Vector2 gunScreenPos = world_to_screen(gunWorldPos);
 		Vector2 gunToMouse = Vector2Subtract(mousePos, gunScreenPos);
 		float gunAngle = atan2(-gunToMouse.y, gunToMouse.x);
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			b2Vec2 local_point = {
-				.x = gun.texture.width / 2.0f * TEXTURE_SCALE,
-				.y = bullet_texture.height / 2.0f * TEXTURE_SCALE
+				.x = gun.texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
+				.y = bullet_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
 			};
 			b2Vec2 p = b2Body_GetWorldPoint(gun.bodyId, local_point);
-			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun.bodyId), (b2Vec2){.x=100, .y=0});
+			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun.bodyId), (b2Vec2){.x=1, .y=0});
 			spawn_bullet(p, gunAngle, velocity, worldId, bullet_texture);
 		}
 
@@ -171,15 +172,19 @@ int main(void)
 		draw_debug_info();
 
 		draw_entity(&gun, (b2Vec2){
-			-gun_texture.width / 2.0f * TEXTURE_SCALE,
-			gun_texture.height / 2.0f * TEXTURE_SCALE
+			-gun_texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
+			gun_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
 		});
 
 		for (size_t i = 0; i < bullets_size; i++) {
 			draw_entity(bullets + i, (b2Vec2){
-				-0.5f,
-				(float)bullet_texture.height / bullet_texture.width / 2
+				-bullet_texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
+				bullet_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
 			});
+			// draw_entity(bullets + i, (b2Vec2){
+			// 	-0.5f,
+			// 	(float)bullet_texture.height / bullet_texture.width / 2
+			// });
 		}
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
