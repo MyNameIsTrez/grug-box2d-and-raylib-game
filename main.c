@@ -10,9 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static int screenWidth = 1280;
-static int screenHeight = 720;
-static float scale = 100.0f;
+#define MAX_BULLETS 420
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
+#define SCALE 100.0f
+// #define SCALE 10.0f
 
 typedef struct Entity
 {
@@ -24,6 +26,9 @@ struct gun {
 	char *name;
 };
 
+static Entity bullets[MAX_BULLETS];
+static size_t bullets_size;
+
 static struct gun gun_definition;
 
 void define_gun(char *name) {
@@ -32,18 +37,47 @@ void define_gun(char *name) {
 	};
 }
 
-static Vector2 ConvertWorldToScreen(b2Vec2 p)
+// Not averaged, unlike DrawFPS()
+static void draw_mspf(int x, int y) {
+	Color color = LIME;
+	float mspf = GetFrameTime() * 1000;
+	DrawText(TextFormat("%.2f MSPF", mspf), x, y, 20, color);
+}
+
+static void draw_debug_info(void) {
+	DrawFPS(0, 0);
+	draw_mspf(0, 20);
+}
+
+static void spawn_bullet(b2WorldId worldId, Texture texture) {
+	b2BodyDef bodyDef = b2DefaultBodyDef();
+	bodyDef.type = b2_dynamicBody;
+	bodyDef.position = (b2Vec2){ 2, 0 };
+
+	Entity bullet;
+	bullet.bodyId = b2CreateBody(worldId, &bodyDef);
+	bullet.texture = texture;
+
+	b2ShapeDef shapeDef = b2DefaultShapeDef();
+	b2Polygon polygon = b2MakeBox(42.0f, 42.0f); // TODO: Use the texture's width and height?
+	b2CreatePolygonShape(bullet.bodyId, &shapeDef, &polygon);
+
+	bullets[bullets_size++] = bullet;
+}
+
+static Vector2 convert_world_to_screen(b2Vec2 p)
 {
-	Vector2 result = { scale * p.x + 0.5f * screenWidth, 0.5f * screenHeight - scale * p.y };
+	Vector2 result = { SCALE * p.x + 0.5f * SCREEN_WIDTH, 0.5f * SCREEN_HEIGHT - SCALE * p.y };
 	return result;
 }
 
-static void DrawEntity(const Entity* entity)
+static void draw_entity(const Entity* entity, b2Vec2 local_point)
 {
-	float textureScale = scale / entity->texture.width;
+	float textureScale = SCALE / entity->texture.width;
+	// float textureScale = SCALE;
 
-	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, (float)entity->texture.height / entity->texture.width / 2 });
-	Vector2 ps = ConvertWorldToScreen(p);
+	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
+	Vector2 ps = convert_world_to_screen(p);
 
 	Rectangle rect = {ps.x, ps.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
 	Vector2 origin = {0, 0};
@@ -83,7 +117,7 @@ static void reload_grug_entities(void) {
 
 int main(void)
 {
-	InitWindow(screenWidth, screenHeight, "box2d-raylib");
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
 
 	// SetTargetFPS(60);
 	SetConfigFlags(FLAG_VSYNC_HINT);
@@ -92,18 +126,22 @@ int main(void)
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
 	// Texture texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
-	Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
+	// Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
 	// Texture texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture texture = LoadTexture("mods/vanilla/m79/m79.png");
-	// Texture texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
+	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
+
+	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_staticBody;
 	bodyDef.position = (b2Vec2){ 2, 0 };
 	// bodyDef.fixedRotation = true; // TODO: Maybe use?
+
 	Entity entity;
 	entity.bodyId = b2CreateBody(worldId, &bodyDef);
-	entity.texture = texture;
+	entity.texture = gun_texture;
+
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
 	b2Polygon polygon = b2MakeBox(42.0f, 42.0f); // TODO: Use the texture's width and height?
 	b2CreatePolygonShape(entity.bodyId, &shapeDef, &polygon);
@@ -121,13 +159,13 @@ int main(void)
 		b2World_Step(worldId, deltaTime, 4);
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			printf("foo\n");
+			spawn_bullet(worldId, bullet_texture);
 		}
 
 		// Let the gun follow the mouse
 		Vector2 mousePos = GetMousePosition();
 		b2Vec2 gunWorldPos = b2Body_GetPosition(entity.bodyId);
-		Vector2 gunScreenPos = ConvertWorldToScreen(gunWorldPos);
+		Vector2 gunScreenPos = convert_world_to_screen(gunWorldPos);
 		Vector2 gunToMouse = Vector2Subtract(mousePos, gunScreenPos);
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
@@ -137,16 +175,27 @@ int main(void)
 		BeginDrawing();
 		ClearBackground(SKYBLUE);
 
-		DrawFPS(0, 0);
+		draw_debug_info();
 
-		DrawEntity(&entity);
+		draw_entity(&entity, (b2Vec2){
+			-0.5f,
+			(float)gun_texture.height / gun_texture.width / 2
+		});
+
+		for (size_t i = 0; i < bullets_size; i++) {
+			draw_entity(bullets + i, (b2Vec2){
+				-0.5f,
+				(float)bullet_texture.height / bullet_texture.width / 2
+			});
+		}
 
 		EndDrawing();
 	}
 
-	UnloadTexture(texture);
+	// TODO: Are these necessary?
+	UnloadTexture(gun_texture);
+	UnloadTexture(bullet_texture);
 
+	// TODO: Is this necessary?
 	CloseWindow();
-
-	return 0;
 }
