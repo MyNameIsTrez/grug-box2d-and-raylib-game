@@ -13,8 +13,9 @@
 #define MAX_BULLETS 420420
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define TEXTURE_SCALE 1.0f
+#define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
+#define BULLET_VELOCITY 2.0f // In m/s
 
 typedef struct Entity
 {
@@ -51,15 +52,15 @@ static void draw_debug_info(void) {
 
 static Vector2 world_to_screen(b2Vec2 p)
 {
-	Vector2 result = { p.x * PIXELS_PER_METER + SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f - p.y * PIXELS_PER_METER };
+	Vector2 result = { p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f - p.y * TEXTURE_SCALE * PIXELS_PER_METER };
 	return result;
 }
 
 static void draw_entity(const Entity* entity)
 {
 	b2Vec2 local_point = {
-		-entity->texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
-		entity->texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
+		-entity->texture.width / 2.0f / PIXELS_PER_METER,
+		entity->texture.height / 2.0f / PIXELS_PER_METER
 	};
 
 	// Rotates the local_point argument by the entity's angle
@@ -131,12 +132,12 @@ int main(void)
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
 	// Texture gun_texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
-	Texture gun_texture = LoadTexture("mods/vanilla/long/long.png");
+	// Texture gun_texture = LoadTexture("mods/vanilla/long/long.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
-	Entity gun = spawn_gun((b2Vec2){ 250.0f / PIXELS_PER_METER, 0 }, worldId, gun_texture);
+	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
+	Entity gun = spawn_gun((b2Vec2){ 100.0f / PIXELS_PER_METER, 0 }, worldId, gun_texture);
 
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
@@ -160,11 +161,11 @@ int main(void)
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			b2Vec2 local_point = {
-				.x = gun.texture.width / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER,
-				.y = bullet_texture.height / 2.0f * TEXTURE_SCALE / PIXELS_PER_METER
+				.x = (gun.texture.width / 2.0f + bullet_texture.width / 2.0f) / PIXELS_PER_METER,
+				.y = 0
 			};
 			b2Vec2 p = b2Body_GetWorldPoint(gun.bodyId, local_point);
-			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun.bodyId), (b2Vec2){.x=1, .y=0});
+			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun.bodyId), (b2Vec2){.x=BULLET_VELOCITY * PIXELS_PER_METER, .y=0});
 			spawn_bullet(p, gunAngle, velocity, worldId, bullet_texture);
 		}
 
