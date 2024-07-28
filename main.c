@@ -10,9 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static int width = 1280;
-static int height = 720;
-static float scale = 5.0f;
+static int screenWidth = 1280;
+static int screenHeight = 720;
+static float scale = 100.0f;
 
 typedef struct Entity
 {
@@ -32,18 +32,26 @@ void define_gun(char *name) {
 	};
 }
 
+static Vector2 ConvertWorldToScreen(b2Vec2 p)
+{
+	Vector2 result = { scale * p.x + 0.5f * screenWidth, 0.5f * screenHeight - scale * p.y };
+	return result;
+}
+
 static void DrawEntity(const Entity* entity)
 {
-	b2Vec2 pos = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { 0.0f, -33.0f });
-	float radians = b2Body_GetAngle(entity->bodyId);
+	float textureScale = scale / entity->texture.width;
 
-	Rectangle rect = {pos.x, pos.y, entity->texture.width * scale, entity->texture.height * scale};
+	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, (b2Vec2) { -0.5f, (float)entity->texture.height / entity->texture.width / 2 });
+	Vector2 ps = ConvertWorldToScreen(p);
+
+	Rectangle rect = {ps.x, ps.y, entity->texture.width * textureScale, entity->texture.height * textureScale};
 	Vector2 origin = {0, 0};
+	float radians = b2Body_GetAngle(entity->bodyId);
 	Color color = {.r=42, .g=42, .b=242, .a=100};
 	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 
-	Vector2 posRaylib = {.x=pos.x, .y=pos.y};
-	DrawTextureEx(entity->texture, posRaylib, -radians * RAD2DEG, scale, WHITE);
+	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, textureScale, WHITE);
 }
 
 static void reload_grug_entities(void) {
@@ -75,7 +83,7 @@ static void reload_grug_entities(void) {
 
 int main(void)
 {
-	InitWindow(width, height, "box2d-raylib");
+	InitWindow(screenWidth, screenHeight, "box2d-raylib");
 
 	// SetTargetFPS(60);
 	SetConfigFlags(FLAG_VSYNC_HINT);
@@ -89,14 +97,14 @@ int main(void)
 
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_staticBody;
-	bodyDef.position = (b2Vec2){ width / 2, height / 2 };
+	bodyDef.position = (b2Vec2){ 2, 0 };
 	// bodyDef.fixedRotation = true; // TODO: Maybe use?
 	Entity entity;
 	entity.bodyId = b2CreateBody(worldId, &bodyDef);
 	entity.texture = texture;
 	b2ShapeDef shapeDef = b2DefaultShapeDef();
-	b2Polygon squarePolygon = b2MakeBox(0.5f, 0.5f); // TODO: width is normally != height
-	b2CreatePolygonShape(entity.bodyId, &shapeDef, &squarePolygon);
+	b2Polygon polygon = b2MakeBox(42.0f, 42.0f); // TODO: Use the texture's width and height?
+	b2CreatePolygonShape(entity.bodyId, &shapeDef, &polygon);
 
 	while (!WindowShouldClose())
 	{
@@ -110,18 +118,17 @@ int main(void)
 		float deltaTime = GetFrameTime();
 		b2World_Step(worldId, deltaTime, 4);
 
-		// TODO: Fire bullet
 		// if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 
-		b2Vec2 gunPos = b2Body_GetPosition(entity.bodyId);
+		// Let the gun follow the mouse
 		Vector2 mousePos = GetMousePosition();
+		b2Vec2 gunWorldPos = b2Body_GetPosition(entity.bodyId);
+		Vector2 gunScreenPos = ConvertWorldToScreen(gunWorldPos);
+		Vector2 gunToMouse = Vector2Subtract(mousePos, gunScreenPos);
 		Color red = {.r=242, .g=42, .b=42, .a=255};
-		DrawLine(gunPos.x, gunPos.y, mousePos.x, mousePos.y, red);
-
-		Vector2 gunPosRaylib = {.x=gunPos.x, .y=gunPos.y};
-		Vector2 gunToMouse = Vector2Subtract(mousePos, gunPosRaylib);
+		DrawLine(gunScreenPos.x, gunScreenPos.y, mousePos.x, mousePos.y, red);
 		float angle = atan2(-gunToMouse.y, gunToMouse.x);
-		b2Body_SetTransform(entity.bodyId, gunPos, angle);
+		b2Body_SetTransform(entity.bodyId, gunWorldPos, angle);
 
 		BeginDrawing();
 		ClearBackground(SKYBLUE);
