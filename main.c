@@ -16,6 +16,7 @@
 #define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 2.0f // In m/s
+#define GROUND_ENTITY_COUNT 50
 
 typedef struct Entity
 {
@@ -29,6 +30,8 @@ struct gun {
 
 static Entity bullets[MAX_BULLETS];
 static size_t bullets_size;
+
+static Entity ground_entities[GROUND_ENTITY_COUNT];
 
 static struct gun gun_definition;
 
@@ -52,8 +55,10 @@ static void draw_debug_info(void) {
 
 static Vector2 world_to_screen(b2Vec2 p)
 {
-	Vector2 result = { p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f - p.y * TEXTURE_SCALE * PIXELS_PER_METER };
-	return result;
+	return (Vector2){
+		  p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH  / 2.0f,
+		- p.y * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_HEIGHT / 2.0f 
+	};
 }
 
 static void draw_entity(const Entity* entity)
@@ -70,12 +75,13 @@ static void draw_entity(const Entity* entity)
 
 	float radians = b2Body_GetAngle(entity->bodyId);
 
-	Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
-	Vector2 origin = {0, 0};
-	Color color = {.r=42, .g=42, .b=242, .a=100};
-	DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
-
 	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
+
+	// Draws the bounding box
+	// Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
+	// Vector2 origin = {0, 0};
+	// Color color = {.r=42, .g=42, .b=242, .a=100};
+	// DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
 }
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId worldId, Texture texture) {
@@ -113,11 +119,31 @@ static Entity spawn_gun(b2Vec2 pos, b2WorldId worldId, Texture texture) {
 	return gun;
 }
 
+static void spawn_ground(b2WorldId worldId) {
+	Texture ground_texture = LoadTexture("ground.png");
+
+	float width_meters  = ground_texture.width  / PIXELS_PER_METER;
+	float height_meters = ground_texture.height / PIXELS_PER_METER;
+
+	b2Polygon groundPolygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
+
+	for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
+		Entity* entity = ground_entities + i;
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.position = (b2Vec2){ (i - GROUND_ENTITY_COUNT / 2) * width_meters, -100.0f / PIXELS_PER_METER };
+
+		entity->bodyId = b2CreateBody(worldId, &bodyDef);
+		entity->texture = ground_texture;
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		b2CreatePolygonShape(entity->bodyId, &shapeDef, &groundPolygon);
+	}
+}
+
 static void reload_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
 		// struct grug_modified reload = grug_reloads[reload_index];
 
-		// TODO: Reload entities here
+		// TODO: Write this
 	}
 }
 
@@ -141,8 +167,9 @@ int main(void)
 
 	Texture bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
-	while (!WindowShouldClose())
-	{
+	spawn_ground(worldId);
+
+	while (!WindowShouldClose()) {
 		if (grug_regenerate_modified_mods()) {
 			fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.filename, grug_error.line_number);
 			exit(EXIT_FAILURE);
@@ -174,6 +201,10 @@ int main(void)
 
 		BeginDrawing();
 		ClearBackground(SKYBLUE);
+
+		for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
+			draw_entity(ground_entities + i);
+		}
 
 		draw_debug_info();
 
