@@ -92,8 +92,10 @@ int main(void)
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
 	// Texture texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
-	// Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
-	Texture texture = LoadTexture("mods/vanilla/thumper/thumper.png");
+	Texture texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
+	// Texture texture = LoadTexture("mods/vanilla/m60/m60.png");
+	// Texture texture = LoadTexture("mods/vanilla/m79/m79.png");
+	// Texture texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
 
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_staticBody;
@@ -118,7 +120,9 @@ int main(void)
 		float deltaTime = GetFrameTime();
 		b2World_Step(worldId, deltaTime, 4);
 
-		// if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			printf("foo\n");
+		}
 
 		// Let the gun follow the mouse
 		Vector2 mousePos = GetMousePosition();
