@@ -9,7 +9,16 @@
 				}
 			],
 			"on_functions": {
-				"on_fire": {
+				"on_fire_pressed": {
+					"description": "Called when the player presses the left mouse button.",
+					"arguments": [
+						{
+							"name": "self",
+							"type": "i32"
+						}
+					]
+				},
+				"on_fire_held": {
 					"description": "Called when the player holds the left mouse button.",
 					"arguments": [
 						{
@@ -35,6 +44,43 @@
 				},
 				{
 					"name": "y",
+					"type": "i32"
+				},
+				{
+					"name": "angle_in_radians",
+					"type": "f32"
+				},
+				{
+					"name": "velocity_in_meters_per_second",
+					"type": "f32"
+				}
+			]
+		},
+		"get_milliseconds_since_spawn": {
+			"description": "Gets the number of milliseconds that have elapsed since this entity was spawned.",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				}
+			]
+		},
+		"get_muzzle_x": {
+			"description": "Gets the X coordinate of the gun's muzzle.",
+			"return_type": "f32",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				}
+			]
+		},
+		"get_muzzle_y": {
+			"description": "Gets the Y coordinate of the gun's muzzle.",
+			"return_type": "f32",
+			"arguments": [
+				{
+					"name": "entity_id",
 					"type": "i32"
 				}
 			]
