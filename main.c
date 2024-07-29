@@ -1,4 +1,4 @@
-#pragma GCC diagnostic push 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-prototypes"
 #include "box2d/box2d.h"
 #pragma GCC diagnostic pop
@@ -59,15 +59,17 @@ static Vector2 world_to_screen(b2Vec2 p)
 {
 	return (Vector2){
 		  p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH  / 2.0f,
-		- p.y * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_HEIGHT / 2.0f 
+		- p.y * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_HEIGHT / 2.0f
 	};
 }
 
 static void draw_entity(const Entity* entity)
 {
+	Texture texture = entity->texture;
+
 	b2Vec2 local_point = {
-		-entity->texture.width / 2.0f / PIXELS_PER_METER,
-		entity->texture.height / 2.0f / PIXELS_PER_METER
+		-texture.width / 2.0f / PIXELS_PER_METER,
+		texture.height / 2.0f / PIXELS_PER_METER
 	};
 
 	// Rotates the local_point argument by the entity's angle
@@ -75,15 +77,20 @@ static void draw_entity(const Entity* entity)
 
 	Vector2 ps = world_to_screen(p);
 
-	float radians = b2Body_GetAngle(entity->bodyId);
+	float angle = b2Body_GetAngle(entity->bodyId);
 
-	DrawTextureEx(entity->texture, ps, -radians * RAD2DEG, TEXTURE_SCALE, WHITE);
+	bool facing_left = (angle > PI / 2) || (angle < -PI / 2);
+    Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (facing_left ? -1 : 1) };
+    Rectangle dest = { ps.x, ps.y, (float)texture.width*TEXTURE_SCALE, (float)texture.height*TEXTURE_SCALE };
+    Vector2 origin = { 0.0f, 0.0f };
+	float rotation = -angle * RAD2DEG;
+	Color tint = WHITE;
+	DrawTexturePro(texture, source, dest, origin, rotation, tint);
 
 	// Draws the bounding box
-	// Rectangle rect = {ps.x, ps.y, entity->texture.width * TEXTURE_SCALE, entity->texture.height * TEXTURE_SCALE};
-	// Vector2 origin = {0, 0};
+	// Rectangle rect = {ps.x, ps.y, texture.width * TEXTURE_SCALE, texture.height * TEXTURE_SCALE};
 	// Color color = {.r=42, .g=42, .b=242, .a=100};
-	// DrawRectanglePro(rect, origin, -radians * RAD2DEG, color);
+	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
 }
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId worldId, Texture texture) {
@@ -196,7 +203,14 @@ int main(void)
 
 	spawn_crates(worldId);
 
+	bool paused = false;
+
 	while (!WindowShouldClose()) {
+		if (IsKeyPressed(KEY_P))
+		{
+			paused = !paused;
+		}
+
 		if (grug_regenerate_modified_mods()) {
 			fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.filename, grug_error.line_number);
 			exit(EXIT_FAILURE);
@@ -204,8 +218,11 @@ int main(void)
 
 		reload_grug_entities();
 
-		float deltaTime = GetFrameTime();
-		b2World_Step(worldId, deltaTime, 4);
+		if (!paused)
+		{
+			float deltaTime = GetFrameTime();
+			b2World_Step(worldId, deltaTime, 4);
+		}
 
 		Vector2 mousePos = GetMousePosition();
 		b2Vec2 gunWorldPos = b2Body_GetPosition(gun.bodyId);
