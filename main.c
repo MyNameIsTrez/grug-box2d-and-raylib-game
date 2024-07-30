@@ -63,7 +63,7 @@ static Vector2 world_to_screen(b2Vec2 p)
 	};
 }
 
-static void draw_entity(const Entity* entity)
+static void draw_entity(const Entity* entity, bool flippable)
 {
 	Texture texture = entity->texture;
 
@@ -79,7 +79,7 @@ static void draw_entity(const Entity* entity)
 
 	float angle = b2Body_GetAngle(entity->bodyId);
 
-	bool facing_left = (angle > PI / 2) || (angle < -PI / 2);
+	bool facing_left = flippable && ((angle > PI / 2) || (angle < -PI / 2));
     Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (facing_left ? -1 : 1) };
     Rectangle dest = { ps.x, ps.y, (float)texture.width*TEXTURE_SCALE, (float)texture.height*TEXTURE_SCALE };
     Vector2 origin = { 0.0f, 0.0f };
@@ -248,17 +248,17 @@ int main(void)
 		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
 
 		for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
-			draw_entity(ground_entities + i);
+			draw_entity(ground_entities + i, false);
 		}
 
 		for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
-			draw_entity(crate_entities + i);
+			draw_entity(crate_entities + i, false);
 		}
 
-		draw_entity(&gun);
+		draw_entity(&gun, true);
 
 		for (size_t i = 0; i < bullets_size; i++) {
-			draw_entity(bullets + i);
+			draw_entity(bullets + i, false);
 		}
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
