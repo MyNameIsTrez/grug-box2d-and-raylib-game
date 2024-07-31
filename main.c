@@ -79,8 +79,8 @@ static void draw_entity(const Entity* entity, bool flippable)
 
 	float angle = b2Body_GetAngle(entity->bodyId);
 
-	bool facing_left = flippable && ((angle > PI / 2) || (angle < -PI / 2));
-    Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (facing_left ? -1 : 1) };
+	bool facing_left = (angle > PI / 2) || (angle < -PI / 2);
+    Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (flippable && facing_left ? -1 : 1) };
     Rectangle dest = { ps.x, ps.y, (float)texture.width*TEXTURE_SCALE, (float)texture.height*TEXTURE_SCALE };
     Vector2 origin = { 0.0f, 0.0f };
 	float rotation = -angle * RAD2DEG;
