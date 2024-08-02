@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define MAX_BULLETS 420420
 #define SCREEN_WIDTH 1280
@@ -249,6 +250,8 @@ int main(void)
 			// Prevents the OS from showing a popup that we are unresponsive
 			BeginDrawing();
 			EndDrawing();
+
+			sleep(1);
 
 			continue;
 		}
