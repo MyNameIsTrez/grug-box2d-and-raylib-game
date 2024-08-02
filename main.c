@@ -243,7 +243,7 @@ int main(void)
 	while (!WindowShouldClose()) {
 		if (grug_regenerate_modified_mods()) {
 			if (grug_error.has_changed) {
-				fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.path, grug_error.line_number);
+				fprintf(stderr, "%s:%d: %s (detected in grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
 			}
 
 			// Prevents the OS from showing a popup that we are unresponsive
