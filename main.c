@@ -37,7 +37,40 @@ static Entity crate_entities[CRATE_ENTITY_COUNT];
 
 static struct gun gun_definition;
 
-void define_gun(char *name) {
+float game_fn_get_angle(int32_t entity_id) {
+	(void)entity_id;
+	// TODO: Implement
+	return 4.2f;
+}
+
+float game_fn_get_muzzle_y(int32_t entity_id) {
+	(void)entity_id;
+	// TODO: Implement
+	return 4.2f;
+}
+
+float game_fn_get_muzzle_x(int32_t entity_id) {
+	(void)entity_id;
+	// TODO: Implement
+	return 4.2f;
+}
+
+int32_t game_fn_get_milliseconds_since_spawn(int32_t entity_id) {
+	(void)entity_id;
+	// TODO: Implement
+	return 42;
+}
+
+void game_fn_spawn_bullet(char *name, int32_t x, int32_t y, float angle_in_radians, float velocity_in_meters_per_second) {
+	(void)name;
+	(void)x;
+	(void)y;
+	(void)angle_in_radians;
+	(void)velocity_in_meters_per_second;
+	// TODO: Implement
+}
+
+void game_fn_define_gun(char *name) {
 	gun_definition = (struct gun){
 		.name = name,
 	};
@@ -63,9 +96,9 @@ static Vector2 world_to_screen(b2Vec2 p)
 	};
 }
 
-static void draw_entity(const Entity* entity, bool flippable)
+static void draw_entity(const Entity entity, bool flippable)
 {
-	Texture texture = entity->texture;
+	Texture texture = entity.texture;
 
 	b2Vec2 local_point = {
 		-texture.width / 2.0f / PIXELS_PER_METER,
@@ -73,11 +106,11 @@ static void draw_entity(const Entity* entity, bool flippable)
 	};
 
 	// Rotates the local_point argument by the entity's angle
-	b2Vec2 p = b2Body_GetWorldPoint(entity->bodyId, local_point);
+	b2Vec2 p = b2Body_GetWorldPoint(entity.bodyId, local_point);
 
 	Vector2 ps = world_to_screen(p);
 
-	float angle = b2Body_GetAngle(entity->bodyId);
+	float angle = b2Body_GetAngle(entity.bodyId);
 
 	bool facing_left = (angle > PI / 2) || (angle < -PI / 2);
     Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (flippable && facing_left ? -1 : 1) };
@@ -93,7 +126,7 @@ static void draw_entity(const Entity* entity, bool flippable)
 	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
 }
 
-static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId worldId, Texture texture) {
+static void spawn_bullet_in_world(b2Vec2 pos, float angle, b2Vec2 velocity, b2WorldId worldId, Texture texture) {
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_dynamicBody;
 	bodyDef.position = pos;
@@ -171,7 +204,9 @@ static void spawn_ground(b2WorldId worldId) {
 
 static void reload_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
-		// struct grug_modified reload = grug_reloads[reload_index];
+		struct grug_modified reload = grug_reloads[reload_index];
+
+		printf("Reloading %s\n", reload.path);
 
 		// TODO: Write this
 	}
@@ -206,17 +241,24 @@ int main(void)
 	bool paused = false;
 
 	while (!WindowShouldClose()) {
+		if (grug_regenerate_modified_mods()) {
+			if (grug_error.has_changed) {
+				fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.path, grug_error.line_number);
+			}
+
+			// Prevents the OS from showing a popup that we are unresponsive
+			BeginDrawing();
+			EndDrawing();
+
+			continue;
+		}
+
+		reload_grug_entities();
+
 		if (IsKeyPressed(KEY_P))
 		{
 			paused = !paused;
 		}
-
-		if (grug_regenerate_modified_mods()) {
-			fprintf(stderr, "%s in %s:%d\n", grug_error.msg, grug_error.filename, grug_error.line_number);
-			exit(EXIT_FAILURE);
-		}
-
-		reload_grug_entities();
 
 		if (!paused)
 		{
@@ -237,7 +279,7 @@ int main(void)
 			};
 			b2Vec2 p = b2Body_GetWorldPoint(gun.bodyId, local_point);
 			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun.bodyId), (b2Vec2){.x=BULLET_VELOCITY * PIXELS_PER_METER, .y=0});
-			spawn_bullet(p, gunAngle, velocity, worldId, bullet_texture);
+			spawn_bullet_in_world(p, gunAngle, velocity, worldId, bullet_texture);
 		}
 
 		// Let the gun point to the mouse
@@ -248,17 +290,17 @@ int main(void)
 		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
 
 		for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
-			draw_entity(ground_entities + i, false);
+			draw_entity(ground_entities[i], false);
 		}
 
 		for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
-			draw_entity(crate_entities + i, false);
+			draw_entity(crate_entities[i], false);
 		}
 
-		draw_entity(&gun, true);
+		draw_entity(gun, true);
 
 		for (size_t i = 0; i < bullets_size; i++) {
-			draw_entity(bullets + i, false);
+			draw_entity(bullets[i], false);
 		}
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};

@@ -58,6 +58,7 @@
 		},
 		"get_milliseconds_since_spawn": {
 			"description": "Gets the number of milliseconds that have elapsed since this entity was spawned.",
+			"return_type": "i32",
 			"arguments": [
 				{
 					"name": "entity_id",
@@ -77,6 +78,16 @@
 		},
 		"get_muzzle_y": {
 			"description": "Gets the Y coordinate of the gun's muzzle.",
+			"return_type": "f32",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				}
+			]
+		},
+		"get_angle": {
+			"description": "Gets the angle of the gun in radians.",
 			"return_type": "f32",
 			"arguments": [
 				{
