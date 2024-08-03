@@ -14,10 +14,9 @@
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 2.0f // In m/s
 #define GROUND_ENTITY_COUNT 16
-#define CRATE_ENTITY_COUNT 16
+#define MAX_CRATES 420420
 
-typedef struct Entity
-{
+typedef struct Entity {
 	b2BodyId bodyId;
 	Texture texture;
 } Entity;
@@ -32,7 +31,8 @@ static Entity bullets[MAX_BULLETS];
 static size_t bullets_size;
 
 static Entity ground_entities[GROUND_ENTITY_COUNT];
-static Entity crate_entities[CRATE_ENTITY_COUNT];
+static Entity crates[MAX_CRATES];
+static size_t crates_size;
 
 static struct gun gun_definition;
 
@@ -89,16 +89,14 @@ static void draw_debug_info(void) {
 	draw_mspf(0, 20);
 }
 
-static Vector2 world_to_screen(b2Vec2 p)
-{
+static Vector2 world_to_screen(b2Vec2 p) {
 	return (Vector2){
 		  p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH  / 2.0f,
 		- p.y * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_HEIGHT / 2.0f
 	};
 }
 
-static void draw_entity(const Entity entity, bool flippable)
-{
+static void draw_entity(const Entity entity, bool flippable) {
 	Texture texture = entity.texture;
 
 	b2Vec2 local_point = {
@@ -169,17 +167,21 @@ static void spawn_crates(b2WorldId worldId) {
 	float width_meters  = texture.width  / PIXELS_PER_METER;
 	float height_meters = texture.height / PIXELS_PER_METER;
 
+	b2ShapeDef shapeDef = b2DefaultShapeDef();
+
 	b2Polygon polygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
 
-	for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
-		Entity* entity = crate_entities + i;
+	int spawned_crate_count = 16;
+
+	for (int i = 0; i < spawned_crate_count; i++) {
+		Entity* entity = &crates[crates_size++];
+
 		b2BodyDef bodyDef = b2DefaultBodyDef();
 		bodyDef.type = b2_dynamicBody;
-		bodyDef.position = (b2Vec2){ -100.0f / PIXELS_PER_METER, (i - CRATE_ENTITY_COUNT / 2) * height_meters + 3.0f };
+		bodyDef.position = (b2Vec2){ -100.0f / PIXELS_PER_METER, (i - spawned_crate_count / 2) * height_meters + 3.0f };
 
 		entity->bodyId = b2CreateBody(worldId, &bodyDef);
 		entity->texture = texture;
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
 		b2CreatePolygonShape(entity->bodyId, &shapeDef, &polygon);
 	}
 }
@@ -190,6 +192,8 @@ static void spawn_ground(b2WorldId worldId) {
 	float width_meters  = texture.width  / PIXELS_PER_METER;
 	float height_meters = texture.height / PIXELS_PER_METER;
 
+	b2ShapeDef shapeDef = b2DefaultShapeDef();
+
 	b2Polygon polygon = b2MakeBox(width_meters / 2.0f, height_meters / 2.0f);
 
 	for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
@@ -199,7 +203,6 @@ static void spawn_ground(b2WorldId worldId) {
 
 		entity->bodyId = b2CreateBody(worldId, &bodyDef);
 		entity->texture = texture;
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
 		b2CreatePolygonShape(entity->bodyId, &shapeDef, &polygon);
 	}
 }
@@ -214,8 +217,7 @@ static void reload_grug_entities(void) {
 	}
 }
 
-int main(void)
-{
+int main(void) {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
 
 	// SetTargetFPS(60);
@@ -259,13 +261,25 @@ int main(void)
 
 		reload_grug_entities();
 
-		if (IsKeyPressed(KEY_P))
-		{
+		if (IsKeyPressed(KEY_P)) { // Pause
 			paused = !paused;
 		}
+		if (IsKeyPressed(KEY_S)) { // Spawn crates
+			spawn_crates(worldId);
+		}
+		if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
+			for (size_t i = 0; i < bullets_size; i++) {
+				b2DestroyBody(bullets[i].bodyId);
+			}
+			bullets_size = 0;
 
-		if (!paused)
-		{
+			for (size_t i = 0; i < crates_size; i++) {
+				b2DestroyBody(crates[i].bodyId);
+			}
+			crates_size = 0;
+		}
+
+		if (!paused) {
 			float deltaTime = GetFrameTime();
 			b2World_Step(worldId, deltaTime, 4);
 		}
@@ -293,12 +307,12 @@ int main(void)
 
 		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
 
-		for (int i = 0; i < GROUND_ENTITY_COUNT; i++) {
+		for (size_t i = 0; i < GROUND_ENTITY_COUNT; i++) {
 			draw_entity(ground_entities[i], false);
 		}
 
-		for (int i = 0; i < CRATE_ENTITY_COUNT; i++) {
-			draw_entity(crate_entities[i], false);
+		for (size_t i = 0; i < crates_size; i++) {
+			draw_entity(crates[i], false);
 		}
 
 		draw_entity(gun, true);
