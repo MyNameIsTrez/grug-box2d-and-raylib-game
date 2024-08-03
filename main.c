@@ -1,8 +1,4 @@
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-prototypes"
 #include "box2d/box2d.h"
-#pragma GCC diagnostic pop
-
 #include "grug.h"
 #include "raylib.h"
 #include "raymath.h"
