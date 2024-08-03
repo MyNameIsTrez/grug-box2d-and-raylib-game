@@ -32,7 +32,7 @@ FetchContent_MakeAvailable(raylib)
 include_directories(grug)
 
 add_executable(game main.c grug/grug.c grug/grug.h)
-target_compile_options(game PRIVATE -Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -g -fsanitize=address,undefined -Og)
+target_compile_options(game PRIVATE -Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -fsanitize=address,undefined)
 target_link_options(game PRIVATE -rdynamic -fsanitize=address,undefined)
 target_link_libraries(game PRIVATE box2d raylib)
 

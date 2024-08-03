@@ -17,7 +17,7 @@
     },
     {
       "label": "Generate Makefile",
-      "command": "mkdir build && cd build && cmake .. && cd ..",
+      "command": "mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && cd ..",
       "type": "shell",
       "problemMatcher": ["$tsc"],
       "presentation": {
