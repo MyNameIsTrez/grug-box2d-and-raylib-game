@@ -6,20 +6,19 @@
 				{
 					"name": "name",
 					"type": "string"
+				},
+				{
+					"name": "rate_of_fire",
+					"type": "i32"
+				},
+				{
+					"name": "full_auto",
+					"type": "bool"
 				}
 			],
 			"on_functions": {
-				"on_fire_pressed": {
-					"description": "Called when the player presses the left mouse button.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
-				},
-				"on_fire_held": {
-					"description": "Called when the player holds the left mouse button.",
+				"on_fire": {
+					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held.",
 					"arguments": [
 						{
 							"name": "self",

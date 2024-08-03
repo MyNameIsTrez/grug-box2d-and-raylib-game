@@ -24,6 +24,8 @@ typedef struct Entity
 
 struct gun {
 	char *name;
+	int32_t rate_of_fire;
+	bool full_auto;
 };
 
 static Entity bullets[MAX_BULLETS];
@@ -67,9 +69,11 @@ void game_fn_spawn_bullet(char *name, int32_t x, int32_t y, float angle_in_radia
 	// TODO: Implement
 }
 
-void game_fn_define_gun(char *name) {
+void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
 	gun_definition = (struct gun){
 		.name = name,
+		.rate_of_fire = rate_of_fire,
+		.full_auto = full_auto,
 	};
 }
 
@@ -107,7 +111,8 @@ static void draw_entity(const Entity entity, bool flippable)
 
 	Vector2 ps = world_to_screen(p);
 
-	float angle = b2Body_GetAngle(entity.bodyId);
+	b2Rot rot = b2Body_GetRotation(entity.bodyId);
+	float angle = b2Rot_GetAngle(rot);
 
 	bool facing_left = (angle > PI / 2) || (angle < -PI / 2);
     Rectangle source = { 0.0f, 0.0f, (float)texture.width, (float)texture.height * (flippable && facing_left ? -1 : 1) };
@@ -127,7 +132,7 @@ static void spawn_bullet_in_world(b2Vec2 pos, float angle, b2Vec2 velocity, b2Wo
 	b2BodyDef bodyDef = b2DefaultBodyDef();
 	bodyDef.type = b2_dynamicBody;
 	bodyDef.position = pos;
-	bodyDef.angle = angle;
+	bodyDef.rotation = b2MakeRot(angle);
 	bodyDef.linearVelocity = velocity;
 
 	Entity bullet;
@@ -282,7 +287,7 @@ int main(void)
 		}
 
 		// Let the gun point to the mouse
-		b2Body_SetTransform(gun.bodyId, gunWorldPos, gunAngle);
+		b2Body_SetTransform(gun.bodyId, gunWorldPos, b2MakeRot(gunAngle));
 
 		BeginDrawing();
 

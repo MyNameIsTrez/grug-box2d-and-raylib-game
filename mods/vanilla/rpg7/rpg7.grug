@@ -1,24 +1,16 @@
 define() gun {
     return {
         .name = "RPG-7",
+        .rate_of_fire = 200,
+        .full_auto = true,
     }
 }
 
-time_of_last_fire: i32 = 0
+on_fire(self: i32) {
+    x: f32 = get_muzzle_x(self) + 4
+    y: f32 = get_muzzle_y(self)
+    angle: f32 = get_angle(self)
+    velocity: f32 = 10
 
-on_fire_held(self: i32) {
-    time: i32 = get_milliseconds_since_spawn(self)
-
-    elapsed: i32 = time - time_of_last_fire
-
-    if elapsed > 2000 {
-        time_of_last_fire = time
-
-        x: f32 = get_muzzle_x(self) + 4
-        y: f32 = get_muzzle_y(self)
-        angle: f32 = get_angle(self)
-        velocity: f32 = 10
-
-        spawn_bullet("rpg", x, y, angle, velocity)
-    }
+    spawn_bullet("rpg", x, y, angle, velocity)
 }
