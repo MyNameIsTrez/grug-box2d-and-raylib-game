@@ -11,7 +11,7 @@
 #define SCREEN_HEIGHT 720
 #define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
-#define BULLET_VELOCITY 2.0f // In m/s
+#define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
 
 enum entity_type {
@@ -98,8 +98,8 @@ static void draw_debug_info(void) {
 
 static Vector2 world_to_screen(b2Vec2 p) {
 	return (Vector2){
-		  p.x * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_WIDTH  / 2.0f,
-		- p.y * TEXTURE_SCALE * PIXELS_PER_METER + SCREEN_HEIGHT / 2.0f
+		  p.x * TEXTURE_SCALE + SCREEN_WIDTH  / 2.0f,
+		- p.y * TEXTURE_SCALE + SCREEN_HEIGHT / 2.0f
 	};
 }
 
@@ -107,8 +107,8 @@ static void draw_entity(struct entity entity) {
 	Texture texture = entity.texture;
 
 	b2Vec2 local_point = {
-		-texture.width / 2.0f / PIXELS_PER_METER,
-		texture.height / 2.0f / PIXELS_PER_METER
+		-texture.width / 2.0f,
+		texture.height / 2.0f
 	};
 
 	// Rotates the local_point argument by the entity's angle
@@ -136,7 +136,7 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture text
 	b2BodyId body_id = b2CreateBody(world_id, &body_def);
 
 	b2ShapeDef shape_def = b2DefaultShapeDef();
-	b2Polygon polygon = b2MakeBox(texture.width / 2.0f / PIXELS_PER_METER, texture.height / 2.0f / PIXELS_PER_METER);
+	b2Polygon polygon = b2MakeBox(texture.width / 2.0f, texture.height / 2.0f);
 	b2CreatePolygonShape(body_id, &shape_def, &polygon);
 
 	entities[entities_size++] = (struct entity){
@@ -174,7 +174,7 @@ static void spawn_crates(Texture texture) {
 	for (int i = 0; i < spawned_crate_count; i++) {
 		b2BodyDef body_def = b2DefaultBodyDef();
 		body_def.type = b2_dynamicBody;
-		body_def.position = (b2Vec2){ -100.0f / PIXELS_PER_METER, (i - spawned_crate_count / 2) * (texture.height / PIXELS_PER_METER) + 3.0f };
+		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 3.0f };
 		body_def.userData = (void *)entities_size;
 
 		spawn_entity(body_def, OBJECT_CRATE, texture, false);
@@ -186,7 +186,7 @@ static void spawn_ground(Texture texture) {
 
 	for (int i = 0; i < ground_entity_count; i++) {
 		b2BodyDef body_def = b2DefaultBodyDef();
-		body_def.position = (b2Vec2){ (i - ground_entity_count / 2) * (texture.width / PIXELS_PER_METER), -100.0f / PIXELS_PER_METER };
+		body_def.position = (b2Vec2){ (i - ground_entity_count / 2) * texture.width, -100.0f };
 		body_def.userData = (void *)entities_size;
 
 		spawn_entity(body_def, OBJECT_GROUND, texture, false);
@@ -217,7 +217,10 @@ int main(void) {
 	// SetTargetFPS(60);
 	SetConfigFlags(FLAG_VSYNC_HINT);
 
+	b2SetLengthUnitsPerMeter(PIXELS_PER_METER);
+
 	b2WorldDef world_def = b2DefaultWorldDef();
+	world_def.gravity.y = -9.8f * PIXELS_PER_METER;
 	world_id = b2CreateWorld(&world_def);
 
 	Texture background_texture = LoadTexture("mods/vanilla/background.png");
@@ -231,7 +234,7 @@ int main(void) {
 	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
 	bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
-	struct entity *gun = spawn_gun((b2Vec2){ 100.0f / PIXELS_PER_METER, 0 }, gun_texture);
+	struct entity *gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 
 	spawn_ground(concrete_texture);
 
@@ -278,7 +281,7 @@ int main(void) {
 			b2BodyEvents events = b2World_GetBodyEvents(world_id);
 			for (int32_t i = 0; i < events.moveCount; i++) {
 				b2BodyMoveEvent *event = events.moveEvents + i;
-				if (event->transform.p.y < -7) { // TODO: Change the value to a little below the bottom of the screen
+				if (event->transform.p.y < -100) { // TODO: Change the value to a little below the bottom of the screen
 					remove_entity((size_t)event->userData);
 				}
 			}
@@ -292,7 +295,7 @@ int main(void) {
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			b2Vec2 local_point = {
-				.x = (gun->texture.width / 2.0f + bullet_texture.width / 2.0f) / PIXELS_PER_METER,
+				.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f,
 				.y = 0
 			};
 			b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
