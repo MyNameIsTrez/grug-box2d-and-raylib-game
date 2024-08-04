@@ -77,16 +77,16 @@ void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
 	};
 }
 
-// Not averaged, unlike DrawFPS()
-static void draw_mspf(int x, int y) {
-	Color color = LIME;
-	float mspf = GetFrameTime() * 1000;
-	DrawText(TextFormat("%.2f MSPF", mspf), x, y, 20, color);
-}
-
 static void draw_debug_info(void) {
 	DrawFPS(0, 0);
-	draw_mspf(0, 20);
+
+	// Not averaged, unlike DrawFPS()
+	float mspf = GetFrameTime() * 1000;
+	DrawText(TextFormat("%.2f MSPF", mspf), 0, 20, 20, LIME);
+
+	DrawText(TextFormat("%zu crates", crates_size), 0, 40, 20, LIME);
+
+	DrawText(TextFormat("%zu bullets", bullets_size), 0, 60, 20, LIME);
 }
 
 static Vector2 world_to_screen(b2Vec2 p) {
