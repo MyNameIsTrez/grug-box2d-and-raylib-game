@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define SCREEN_WIDTH 1280
@@ -199,7 +200,8 @@ static void spawn_crates(Texture texture) {
 	for (int i = 0; i < spawned_crate_count; i++) {
 		b2BodyDef body_def = b2DefaultBodyDef();
 		body_def.type = b2_dynamicBody;
-		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 42.0f };
+		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 1000.0f };
+		// body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 42.0f };
 		body_def.userData = (void *)entities_size;
 
 		spawn_entity(body_def, OBJECT_CRATE, texture, false);
@@ -303,11 +305,20 @@ int main(void) {
 			float deltaTime = GetFrameTime();
 			b2World_Step(world_id, deltaTime, 4);
 
+			static bool removed_entities[MAX_ENTITIES];
+			memset(removed_entities, false, sizeof(removed_entities));
+
 			b2BodyEvents events = b2World_GetBodyEvents(world_id);
 			for (int32_t i = 0; i < events.moveCount; i++) {
 				b2BodyMoveEvent *event = events.moveEvents + i;
 				if (event->transform.p.y < -100) { // TODO: Change the value to a little below the bottom of the screen
-					remove_entity((size_t)event->userData);
+					removed_entities[(size_t)event->userData] = true;
+				}
+			}
+
+			for (size_t i = entities_size; i > 0; i--) {
+				if (removed_entities[i - 1]) {
+					remove_entity(i - 1);
 				}
 			}
 		}
