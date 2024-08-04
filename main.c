@@ -1,3 +1,6 @@
+// Solely so stupid VS Code can find "CLOCK_PROCESS_CPUTIME_ID"
+#define _POSIX_C_SOURCE 199309L
+
 #include "box2d/box2d.h"
 #include "grug.h"
 #include "raylib.h"
@@ -6,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define SCREEN_WIDTH 1280
@@ -14,6 +18,7 @@
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
+#define FONT_SIZE 20
 
 enum entity_type {
 	OBJECT_GUN,
@@ -46,6 +51,9 @@ static b2WorldId world_id;
 static Texture crate_texture;
 static Texture concrete_texture;
 static Texture bullet_texture;
+
+static struct timespec time_start;
+static struct timespec time_end;
 
 static struct gun gun_definition;
 
@@ -90,20 +98,32 @@ void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
 	};
 }
 
-static void draw_debug_line(const char *text) {
-	DrawText(text, 0, debug_line_number++ * 20, 20, RAYWHITE);
+static double get_elapsed_ms(struct timespec start, struct timespec end) {
+	return 1.0e3 * (double)(end.tv_sec - start.tv_sec) + 1.0e-6 * (double)(end.tv_nsec - start.tv_nsec);
+}
+
+static void draw_debug_line(const char *text, int x) {
+	DrawText(text, x, debug_line_number++ * FONT_SIZE, FONT_SIZE, RAYWHITE);
+}
+
+static void draw_debug_line_left(const char *text) {
+	draw_debug_line(text, 0);
+}
+
+static void draw_debug_line_right(const char *text) {
+	draw_debug_line(text, SCREEN_WIDTH - MeasureText(text, FONT_SIZE));
 }
 
 static void draw_debug_info(void) {
 	debug_line_number = 0;
 
-	// mspf doesn't get averaged here, unlike DrawFPS()
-	float mspf = GetFrameTime() * 1000;
-	draw_debug_line(TextFormat("%.2f MSPF", mspf));
+	draw_debug_line_left(TextFormat("entities: %zu", entities_size));
 
-	draw_debug_line(TextFormat("%zu entities", entities_size));
+	draw_debug_line_left(TextFormat("drawn entities: %zu", drawn_entities));
 
-	draw_debug_line(TextFormat("%zu drawn entities", drawn_entities));
+	debug_line_number = 0;
+
+	draw_debug_line_right(TextFormat("%.2f ms/frame", get_elapsed_ms(time_start, time_end)));
 }
 
 static Vector2 world_to_screen(b2Vec2 p) {
@@ -270,6 +290,8 @@ int main(void) {
 	bool paused = false;
 
 	while (!WindowShouldClose()) {
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
+
 		if (grug_regenerate_modified_mods()) {
 			if (grug_error.has_changed) {
 				fprintf(stderr, "%s:%d: %s (detected in grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
@@ -316,6 +338,7 @@ int main(void) {
 				}
 			}
 
+			// This is O(n), but should be fast enough in practice
 			for (size_t i = entities_size; i > 0; i--) {
 				if (removed_entities[i - 1]) {
 					remove_entity(i - 1);
@@ -353,6 +376,8 @@ int main(void) {
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
+
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_end);
 
 		draw_debug_info();
 
