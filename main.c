@@ -19,6 +19,7 @@
 #define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
 #define FONT_SIZE 20
+#define MAX_MEASUREMENTS 420
 
 enum entity_type {
 	OBJECT_GUN,
@@ -52,8 +53,13 @@ static Texture crate_texture;
 static Texture concrete_texture;
 static Texture bullet_texture;
 
-static struct timespec time_start;
-static struct timespec time_end;
+struct measurement {
+	struct timespec time;
+	char *description;
+};
+
+static struct measurement measurements[MAX_MEASUREMENTS];
+static size_t measurements_size;
 
 static struct gun gun_definition;
 
@@ -123,7 +129,18 @@ static void draw_debug_info(void) {
 
 	debug_line_number = 0;
 
-	draw_debug_line_right(TextFormat("%.2f ms/frame", get_elapsed_ms(time_start, time_end)));
+	draw_debug_line_right(TextFormat("%.2f ms/frame", get_elapsed_ms(measurements[0].time, measurements[measurements_size - 1].time)));
+
+	for (size_t i = 1; i < measurements_size - 1; i++) {
+		struct timespec previous = measurements[i - 1].time;
+		struct timespec current = measurements[i].time;
+		draw_debug_line_right(TextFormat("%.2f %s", get_elapsed_ms(previous, current), measurements[i].description));
+	}
+}
+
+static void record(char *description) {
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &measurements[measurements_size].time);
+	measurements[measurements_size++].description = description;
 }
 
 static Vector2 world_to_screen(b2Vec2 p) {
@@ -176,6 +193,14 @@ static void draw_entity(struct entity entity) {
 	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
 
 	drawn_entities++;
+}
+
+static void remove_entity(size_t entity_index) {
+	b2DestroyBody(entities[entity_index].body_id);
+	entities[entity_index] = entities[--entities_size];
+	if (entity_index < entities_size) {
+		b2Body_SetUserData(entities[entity_index].body_id, (void *)entity_index);
+	}
 }
 
 static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, bool flippable) {
@@ -240,14 +265,6 @@ static void spawn_ground(Texture texture) {
 	}
 }
 
-static void remove_entity(size_t entity_index) {
-	b2DestroyBody(entities[entity_index].body_id);
-	entities[entity_index] = entities[--entities_size];
-	if (entity_index < entities_size) {
-		b2Body_SetUserData(entities[entity_index].body_id, (void *)entity_index);
-	}
-}
-
 static void reload_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
 		struct grug_modified reload = grug_reloads[reload_index];
@@ -290,7 +307,8 @@ int main(void) {
 	bool paused = false;
 
 	while (!WindowShouldClose()) {
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
+		measurements_size = 0;
+		record("start");
 
 		if (grug_regenerate_modified_mods()) {
 			if (grug_error.has_changed) {
@@ -305,8 +323,10 @@ int main(void) {
 
 			continue;
 		}
+		record("mod regeneration");
 
 		reload_grug_entities();
+		record("reloading entities");
 
 		if (IsKeyPressed(KEY_P)) { // Pause
 			paused = !paused;
@@ -377,7 +397,7 @@ int main(void) {
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
 
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_end);
+		record("end");
 
 		draw_debug_info();
 
