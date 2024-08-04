@@ -346,9 +346,11 @@ int main(void) {
 		if (!paused) {
 			float deltaTime = GetFrameTime();
 			b2World_Step(world_id, deltaTime, 4);
+			record("world step");
 
 			static bool removed_entities[MAX_ENTITIES];
 			memset(removed_entities, false, sizeof(removed_entities));
+			record("clearing removed_entities");
 
 			b2BodyEvents events = b2World_GetBodyEvents(world_id);
 			for (int32_t i = 0; i < events.moveCount; i++) {
@@ -357,6 +359,7 @@ int main(void) {
 					removed_entities[(size_t)event->userData] = true;
 				}
 			}
+			record("getting body events");
 
 			// This is O(n), but should be fast enough in practice
 			for (size_t i = entities_size; i > 0; i--) {
@@ -364,6 +367,7 @@ int main(void) {
 					remove_entity(i - 1);
 				}
 			}
+			record("removing entities");
 		}
 
 		Vector2 mouse_pos = GetMousePosition();
@@ -371,6 +375,7 @@ int main(void) {
 		Vector2 gun_screen_pos = world_to_screen(gun_world_pos);
 		Vector2 gun_to_mouse = Vector2Subtract(mouse_pos, gun_screen_pos);
 		float gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
+		record("calculating gun_angle");
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			b2Vec2 local_point = {
@@ -384,18 +389,23 @@ int main(void) {
 
 		// Let the gun point to the mouse
 		b2Body_SetTransform(gun->body_id, gun_world_pos, b2MakeRot(gun_angle));
+		record("point gun to mouse");
 
 		BeginDrawing();
+		record("beginning drawing");
 
 		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
+		record("drawing background");
 
 		drawn_entities = 0;
 		for (size_t i = 0; i < entities_size; i++) {
 			draw_entity(entities[i]);
 		}
+		record("drawing entities");
 
 		Color red = {.r=242, .g=42, .b=42, .a=255};
 		DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
+		record("drawing gun line");
 
 		record("end");
 
