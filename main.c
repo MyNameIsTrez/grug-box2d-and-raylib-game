@@ -36,6 +36,9 @@ struct gun {
 
 static struct entity entities[MAX_ENTITIES];
 static size_t entities_size;
+static size_t drawn_entities;
+
+static int debug_line_number;
 
 static b2WorldId world_id;
 
@@ -86,14 +89,20 @@ void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
 	};
 }
 
+static void draw_debug_line(const char *text) {
+	DrawText(text, 0, debug_line_number++ * 20, 20, RAYWHITE);
+}
+
 static void draw_debug_info(void) {
-	DrawFPS(0, 0);
+	debug_line_number = 0;
 
 	// mspf doesn't get averaged here, unlike DrawFPS()
 	float mspf = GetFrameTime() * 1000;
-	DrawText(TextFormat("%.2f MSPF", mspf), 0, 20, 20, LIME);
+	draw_debug_line(TextFormat("%.2f MSPF", mspf));
 
-	DrawText(TextFormat("%zu entities", entities_size), 0, 40, 20, LIME);
+	draw_debug_line(TextFormat("%zu entities", entities_size));
+
+	draw_debug_line(TextFormat("%zu drawn entities", drawn_entities));
 }
 
 static Vector2 world_to_screen(b2Vec2 p) {
@@ -116,6 +125,20 @@ static void draw_entity(struct entity entity) {
 
 	Vector2 pos_screen = world_to_screen(pos_world);
 
+	// Using this would be more accurate for huge textures, but would probably be slower
+	// b2AABB aabb = b2Body_ComputeAABB(entity.body_id);
+	// Vector2 lower = world_to_screen(aabb.lowerBound);
+	// Vector2 upper = world_to_screen(aabb.upperBound);
+
+	float margin = -2.0f * PIXELS_PER_METER;
+	float left = pos_screen.x + margin;
+	float right = pos_screen.x - margin;
+	float top = pos_screen.y + margin;
+	float bottom = pos_screen.y - margin;
+	if (left > SCREEN_WIDTH || right < 0 || top > SCREEN_HEIGHT || bottom < 0) {
+		return;
+	}
+
 	b2Rot rot = b2Body_GetRotation(entity.body_id);
 	float angle = b2Rot_GetAngle(rot);
 
@@ -130,6 +153,8 @@ static void draw_entity(struct entity entity) {
 	// Rectangle rect = {pos_screen.x, pos_screen.y, texture.width * TEXTURE_SCALE, texture.height * TEXTURE_SCALE};
 	// Color color = {.r=42, .g=42, .b=242, .a=100};
 	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
+
+	drawn_entities++;
 }
 
 static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, bool flippable) {
@@ -169,12 +194,12 @@ static struct entity *spawn_gun(b2Vec2 pos, Texture texture) {
 }
 
 static void spawn_crates(Texture texture) {
-	int spawned_crate_count = 16;
+	int spawned_crate_count = 160;
 
 	for (int i = 0; i < spawned_crate_count; i++) {
 		b2BodyDef body_def = b2DefaultBodyDef();
 		body_def.type = b2_dynamicBody;
-		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 3.0f };
+		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 42.0f };
 		body_def.userData = (void *)entities_size;
 
 		spawn_entity(body_def, OBJECT_CRATE, texture, false);
@@ -310,6 +335,7 @@ int main(void) {
 
 		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
 
+		drawn_entities = 0;
 		for (size_t i = 0; i < entities_size; i++) {
 			draw_entity(entities[i]);
 		}
