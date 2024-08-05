@@ -39,11 +39,11 @@
 				},
 				{
 					"name": "x",
-					"type": "i32"
+					"type": "f32"
 				},
 				{
 					"name": "y",
-					"type": "i32"
+					"type": "f32"
 				},
 				{
 					"name": "angle_in_radians",

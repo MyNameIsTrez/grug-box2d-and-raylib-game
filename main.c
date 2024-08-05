@@ -16,7 +16,6 @@
 #define SCREEN_HEIGHT 720
 #define TEXTURE_SCALE 1.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
-#define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
 #define FONT_SIZE 20
 #define MAX_MEASUREMENTS 420
@@ -71,6 +70,18 @@ static size_t type_files_size;
 
 static bool debug_info = true;
 
+static void *gun_globals;
+
+static float gun_angle;
+
+void on_gun_fire(void *globals, int32_t self);
+
+struct gun_on_fns {
+	typeof(on_gun_fire) *fire;
+};
+
+static struct gun_on_fns *gun_on_fns;
+
 float game_fn_get_angle(int32_t entity_id) {
 	(void)entity_id;
 	// TODO: Implement
@@ -95,13 +106,21 @@ int32_t game_fn_get_milliseconds_since_spawn(int32_t entity_id) {
 	return 42;
 }
 
-void game_fn_spawn_bullet(char *name, int32_t x, int32_t y, float angle_in_radians, float velocity_in_meters_per_second) {
-	(void)name;
-	(void)x;
-	(void)y;
-	(void)angle_in_radians;
-	(void)velocity_in_meters_per_second;
-	// TODO: Implement
+static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture);
+
+void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, float velocity_in_meters_per_second) {
+	(void)name; // TODO: Use
+	(void)x; // TODO: Use
+	(void)y; // TODO: Use
+	(void)angle_in_radians; // TODO: Use
+
+	b2Vec2 local_point = {
+		.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f,
+		.y = 0
+	};
+	b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
+	b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun->body_id), (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0});
+	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
 }
 
 void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
@@ -309,6 +328,12 @@ static void reload_modified_grug_entities(void) {
 		printf("Reloading %s\n", reload.path);
 
 		reload.define_fn();
+
+		free(gun_globals);
+		gun_globals = malloc(reload.globals_size);
+		reload.init_globals_fn(gun_globals);
+
+		gun_on_fns = reload.on_fns;
 	}
 }
 
@@ -375,7 +400,14 @@ int main(void) {
 
 			struct grug_file *files_defining_gun = get_type_files("gun");
 
-			files_defining_gun[0].define_fn();
+			struct grug_file file = files_defining_gun[0];
+
+			file.define_fn();
+
+			gun_globals = malloc(file.globals_size);
+			file.init_globals_fn(gun_globals);
+
+			gun_on_fns = file.on_fns;
 		}
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
@@ -428,7 +460,7 @@ int main(void) {
 		b2Vec2 gun_world_pos = b2Body_GetPosition(gun->body_id);
 		Vector2 gun_screen_pos = world_to_screen(gun_world_pos);
 		Vector2 gun_to_mouse = Vector2Subtract(mouse_pos, gun_screen_pos);
-		float gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
+		gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
 		record("calculating gun_angle");
 
 		struct timespec current_time;
@@ -439,13 +471,7 @@ int main(void) {
 		if ((gun_definition.full_auto ? IsMouseButtonDown(MOUSE_BUTTON_LEFT) : IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && can_fire) {
 			previous_round_fired_time = current_time;
 
-			b2Vec2 local_point = {
-				.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f,
-				.y = 0
-			};
-			b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
-			b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun->body_id), (b2Vec2){.x=BULLET_VELOCITY * PIXELS_PER_METER, .y=0});
-			spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
+			gun_on_fns->fire(gun_globals, 0);
 		}
 
 		// Let the gun point to the mouse

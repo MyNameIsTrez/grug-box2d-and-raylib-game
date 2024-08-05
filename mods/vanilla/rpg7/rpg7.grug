@@ -7,10 +7,11 @@ define() gun {
 }
 
 on_fire(self: i32) {
-    x: f32 = get_muzzle_x(self) + 4
+    # TODO: Add +4 back to x
+    x: f32 = get_muzzle_x(self)
     y: f32 = get_muzzle_y(self)
     angle: f32 = get_angle(self)
-    velocity: f32 = 10
+    velocity: f32 = 42.0
 
     spawn_bullet("rpg", x, y, angle, velocity)
 }

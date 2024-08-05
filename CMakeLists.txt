@@ -34,7 +34,7 @@ include_directories(grug)
 add_executable(game main.c grug/grug.c grug/grug.h)
 
 target_compile_options(game PRIVATE
-	-Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -g
+	-Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -Wno-language-extension-token -g
 	$<$<CONFIG:RELEASE>:-Ofast -march=native>
 	$<$<CONFIG:DEBUG>:-fsanitize=address,undefined>
 )
