@@ -14,7 +14,7 @@
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define TEXTURE_SCALE 2.0f
+#define TEXTURE_SCALE 0.5f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
@@ -355,7 +355,8 @@ int main(void) {
 			b2BodyEvents events = b2World_GetBodyEvents(world_id);
 			for (int32_t i = 0; i < events.moveCount; i++) {
 				b2BodyMoveEvent *event = events.moveEvents + i;
-				if (event->transform.p.y < -100) { // TODO: Change the value to a little below the bottom of the screen
+				// Remove entities that end up below the screen
+				if (event->transform.p.y < -SCREEN_HEIGHT / 2.0f / TEXTURE_SCALE + 30.0f) {
 					removed_entities[(size_t)event->userData] = true;
 				}
 			}

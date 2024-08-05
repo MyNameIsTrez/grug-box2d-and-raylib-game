@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Rebuild and run",
+      "label": "Rebuild",
       "command": "make",
       "type": "shell",
       "args": [
@@ -16,7 +16,17 @@
       "group": "build"
     },
     {
-      "label": "Generate Makefile",
+      "label": "Generate Release build",
+      "command": "mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && cd ..",
+      "type": "shell",
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always"
+      },
+      "group": "build"
+    },
+    {
+      "label": "Generate Debug build",
       "command": "mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && cd ..",
       "type": "shell",
       "problemMatcher": ["$tsc"],

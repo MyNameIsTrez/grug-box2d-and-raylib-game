@@ -32,11 +32,20 @@ FetchContent_MakeAvailable(raylib)
 include_directories(grug)
 
 add_executable(game main.c grug/grug.c grug/grug.h)
-target_compile_options(game PRIVATE -Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -fsanitize=address,undefined)
-target_link_options(game PRIVATE -rdynamic -fsanitize=address,undefined)
+
+target_compile_options(game PRIVATE
+	-Wall -Wextra -Werror -Wpedantic -Wstrict-prototypes -Wshadow -Wuninitialized -Wfatal-errors -g
+	$<$<CONFIG:RELEASE>:-Ofast -march=native>
+	$<$<CONFIG:DEBUG>:-fsanitize=address,undefined>
+)
+target_link_options(game PRIVATE
+	-rdynamic
+	$<$<CONFIG:DEBUG>:-fsanitize=address,undefined>
+)
+
 target_link_libraries(game PRIVATE box2d raylib)
 
 if (MSVC)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT game)
 	set_property(TARGET game PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-endif()	
+endif()

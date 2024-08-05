@@ -2,12 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "launch with gcc",
+      "name": "Rebuild and run",
       "type": "cppdbg",
       "request": "launch",
       "cwd": "${workspaceRoot}",
       "program": "${workspaceRoot}/build/game",
-      "preLaunchTask": "Rebuild and run"
+      "preLaunchTask": "Rebuild"
     }
   ]
 }
