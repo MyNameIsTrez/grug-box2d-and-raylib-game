@@ -11,7 +11,7 @@ on_fire(self: i32) {
     x: f32 = get_muzzle_x(self)
     y: f32 = get_muzzle_y(self)
     angle: f32 = get_angle(self)
-    velocity: f32 = 42.0
+    velocity: f32 = rand(0.0, 2.0) - rand(0.0, 2.0) + 3.0
 
     spawn_bullet("rpg", x, y, angle, velocity)
 }

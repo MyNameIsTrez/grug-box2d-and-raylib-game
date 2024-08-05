@@ -82,6 +82,12 @@ struct gun_on_fns {
 
 static struct gun_on_fns *gun_on_fns;
 
+float game_fn_rand(float min, float max)
+{
+    float range = max - min;
+    return min + rand() / (double)RAND_MAX * range;
+}
+
 float game_fn_get_angle(int32_t entity_id) {
 	(void)entity_id;
 	// TODO: Implement

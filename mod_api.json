@@ -94,6 +94,20 @@
 					"type": "i32"
 				}
 			]
+		},
+		"rand": {
+			"description": "Gets a random f32 between min and max.",
+			"return_type": "f32",
+			"arguments": [
+				{
+					"name": "min",
+					"type": "f32"
+				},
+				{
+					"name": "max",
+					"type": "f32"
+				}
+			]
 		}
 	}
 }
