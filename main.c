@@ -63,6 +63,8 @@ static size_t measurements_size;
 
 static struct gun gun_definition;
 
+static bool debug_info = true;
+
 float game_fn_get_angle(int32_t entity_id) {
 	(void)entity_id;
 	// TODO: Implement
@@ -139,8 +141,10 @@ static void draw_debug_info(void) {
 }
 
 static void record(char *description) {
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &measurements[measurements_size].time);
-	measurements[measurements_size++].description = description;
+	if (debug_info) {
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &measurements[measurements_size].time);
+		measurements[measurements_size++].description = description;
+	}
 }
 
 static Vector2 world_to_screen(b2Vec2 p) {
@@ -328,6 +332,9 @@ int main(void) {
 		reload_grug_entities();
 		record("reloading entities");
 
+		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
+			debug_info = !debug_info;
+		}
 		if (IsKeyPressed(KEY_P)) { // Pause
 			paused = !paused;
 		}
@@ -410,7 +417,9 @@ int main(void) {
 
 		record("end");
 
-		draw_debug_info();
+		if (debug_info) {
+			draw_debug_info();
+		}
 
 		EndDrawing();
 	}
