@@ -14,12 +14,13 @@
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define TEXTURE_SCALE 0.5f
+#define TEXTURE_SCALE 1.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define BULLET_VELOCITY 42.0f // In m/s
 #define MAX_ENTITIES 420420
 #define FONT_SIZE 20
 #define MAX_MEASUREMENTS 420
+#define MAX_TYPE_FILES 420420
 
 enum entity_type {
 	OBJECT_GUN,
@@ -37,7 +38,7 @@ struct entity {
 
 struct gun {
 	char *name;
-	int32_t rate_of_fire;
+	int32_t ms_per_round_fired;
 	bool full_auto;
 };
 
@@ -62,6 +63,11 @@ static struct measurement measurements[MAX_MEASUREMENTS];
 static size_t measurements_size;
 
 static struct gun gun_definition;
+
+static struct entity *gun;
+
+static struct grug_file type_files[MAX_TYPE_FILES];
+static size_t type_files_size;
 
 static bool debug_info = true;
 
@@ -99,9 +105,11 @@ void game_fn_spawn_bullet(char *name, int32_t x, int32_t y, float angle_in_radia
 }
 
 void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
+	double rounds_per_second = (double)rate_of_fire / 60.0;
+
 	gun_definition = (struct gun){
 		.name = name,
-		.rate_of_fire = rate_of_fire,
+		.ms_per_round_fired = 1.0 / rounds_per_second * 1000.0,
 		.full_auto = full_auto,
 	};
 }
@@ -269,13 +277,38 @@ static void spawn_ground(Texture texture) {
 	}
 }
 
-static void reload_grug_entities(void) {
+static void push_file_containing_fn(struct grug_file file) {
+	if (type_files_size + 1 > MAX_TYPE_FILES) {
+		fprintf(stderr, "There are more than %d files containing the requested type, exceeding MAX_TYPE_FILES", MAX_TYPE_FILES);
+		exit(EXIT_FAILURE);
+	}
+	type_files[type_files_size++] = file;
+}
+
+static void update_type_files_impl(struct grug_mod_dir dir, char *fn_name) {
+	for (size_t i = 0; i < dir.dirs_size; i++) {
+		update_type_files_impl(dir.dirs[i], fn_name);
+	}
+	for (size_t i = 0; i < dir.files_size; i++) {
+		if (strcmp(fn_name, dir.files[i].define_type) == 0) {
+			push_file_containing_fn(dir.files[i]);
+		}
+	}
+}
+
+static struct grug_file *get_type_files(char *fn_name) {
+	type_files_size = 0;
+	update_type_files_impl(grug_mods, fn_name);
+	return type_files;
+}
+
+static void reload_modified_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
 		struct grug_modified reload = grug_reloads[reload_index];
 
 		printf("Reloading %s\n", reload.path);
 
-		// TODO: Write this
+		reload.define_fn();
 	}
 }
 
@@ -302,13 +335,18 @@ int main(void) {
 	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
 	bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
 
-	struct entity *gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
+	gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 
 	spawn_ground(concrete_texture);
 
 	spawn_crates(crate_texture);
 
 	bool paused = false;
+
+	bool initialized = false;
+
+	struct timespec previous_round_fired_time;
+	clock_gettime(CLOCK_MONOTONIC, &previous_round_fired_time);
 
 	while (!WindowShouldClose()) {
 		measurements_size = 0;
@@ -329,8 +367,16 @@ int main(void) {
 		}
 		record("mod regeneration");
 
-		reload_grug_entities();
+		reload_modified_grug_entities();
 		record("reloading entities");
+
+		if (!initialized) {
+			initialized = true;
+
+			struct grug_file *files_defining_gun = get_type_files("gun");
+
+			files_defining_gun[0].define_fn();
+		}
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
 			debug_info = !debug_info;
@@ -385,7 +431,14 @@ int main(void) {
 		float gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
 		record("calculating gun_angle");
 
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+		struct timespec current_time;
+		clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+		double elapsed_ms = get_elapsed_ms(previous_round_fired_time, current_time);
+		bool can_fire = elapsed_ms > gun_definition.ms_per_round_fired;
+		if ((gun_definition.full_auto ? IsMouseButtonDown(MOUSE_BUTTON_LEFT) : IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && can_fire) {
+			previous_round_fired_time = current_time;
+
 			b2Vec2 local_point = {
 				.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f,
 				.y = 0
