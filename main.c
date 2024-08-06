@@ -82,8 +82,19 @@ struct gun_on_fns {
 
 static struct gun_on_fns *gun_on_fns;
 
-float game_fn_rand(float min, float max)
-{
+void game_fn_print_string(char *s) {
+	printf("%s\n", s);
+}
+
+void game_fn_print_f32(float f) {
+	printf("%f\n", f);
+}
+
+void game_fn_print_i32(int32_t i) {
+	printf("%d\n", i);
+}
+
+float game_fn_rand(float min, float max) {
     float range = max - min;
     return min + rand() / (double)RAND_MAX * range;
 }

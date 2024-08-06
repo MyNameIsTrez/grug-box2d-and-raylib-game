@@ -108,6 +108,33 @@
 					"type": "f32"
 				}
 			]
+		},
+		"print_i32": {
+			"description": "Prints an i32.",
+			"arguments": [
+				{
+					"name": "i",
+					"type": "i32"
+				}
+			]
+		},
+		"print_f32": {
+			"description": "Prints an f32.",
+			"arguments": [
+				{
+					"name": "f",
+					"type": "f32"
+				}
+			]
+		},
+		"print_string": {
+			"description": "Prints a string.",
+			"arguments": [
+				{
+					"name": "s",
+					"type": "string"
+				}
+			]
 		}
 	}
 }

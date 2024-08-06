@@ -2,16 +2,31 @@ define() gun {
     return {
         .name = "RPG-7",
         .rounds_per_minute = 200,
-        .full_auto = false,
+        .full_auto = true,
     }
 }
 
 on_fire(self: i32) {
+    i: i32 = 0
+    while i < 100 {
+        helper_shoot(self)
+        i = i + 1
+    }
+}
+
+helper_shoot(self: i32) {
     # TODO: Add +4 back to x
     x: f32 = get_muzzle_x(self)
     y: f32 = get_muzzle_y(self)
     angle: f32 = get_angle(self)
-    velocity: f32 = rand(0.0, 2.0) - rand(0.0, 2.0) + 3.0
+    velocity: f32 = helper_weighted_rand(1.0, 50.0)
+
+    print_string("velocity:")
+    print_f32(velocity)
 
     spawn_bullet("rpg", x, y, angle, velocity)
+}
+
+helper_weighted_rand(a: f32, b: f32) f32 {
+    return (rand(0.0, 0.5) - rand(0.0, 0.5) + 0.5) * (b - a) + a
 }
