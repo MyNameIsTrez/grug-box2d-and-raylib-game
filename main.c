@@ -14,7 +14,7 @@
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define TEXTURE_SCALE 1.0f
+#define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define MAX_ENTITIES 420420
 #define FONT_SIZE 20
@@ -105,38 +105,23 @@ float game_fn_get_angle(int32_t entity_id) {
 	return 4.2f;
 }
 
-float game_fn_get_muzzle_y(int32_t entity_id) {
-	(void)entity_id;
-	// TODO: Implement
-	return 4.2f;
-}
-
-float game_fn_get_muzzle_x(int32_t entity_id) {
-	(void)entity_id;
-	// TODO: Implement
-	return 4.2f;
-}
-
-int32_t game_fn_get_milliseconds_since_spawn(int32_t entity_id) {
-	(void)entity_id;
-	// TODO: Implement
-	return 42;
-}
-
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture);
 
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, float velocity_in_meters_per_second) {
 	(void)name; // TODO: Use
-	(void)x; // TODO: Use
-	(void)y; // TODO: Use
 	(void)angle_in_radians; // TODO: Use
 
 	b2Vec2 local_point = {
-		.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f,
-		.y = 0
+		.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f + x,
+		.y = y
 	};
 	b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
-	b2Vec2 velocity = b2RotateVector(b2Body_GetRotation(gun->body_id), (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0});
+
+	b2Rot rot = b2Body_GetRotation(gun->body_id);
+	// b2Rot_GetAngle(); // TODO: Add angle_in_radians
+
+	b2Vec2 velocity_unrotated = (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0};
+	b2Vec2 velocity = b2RotateVector(rot, velocity_unrotated);
 	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
 }
 
