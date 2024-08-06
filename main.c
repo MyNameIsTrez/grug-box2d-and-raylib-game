@@ -129,12 +129,13 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, 
 	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
 }
 
-void game_fn_define_gun(char *name, int32_t rate_of_fire, bool full_auto) {
-	double rounds_per_second = (double)rate_of_fire / 60.0;
+void game_fn_define_gun(char *name, int32_t rounds_per_minute, bool full_auto) {
+	double rounds_per_second = rounds_per_minute / 60.0;
+	double seconds_per_round = 1.0 / rounds_per_second;
 
 	gun_definition = (struct gun){
 		.name = name,
-		.ms_per_round_fired = 1.0 / rounds_per_second * 1000.0,
+		.ms_per_round_fired = seconds_per_round * 1000.0,
 		.full_auto = full_auto,
 	};
 }

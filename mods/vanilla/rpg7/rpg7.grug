@@ -1,8 +1,8 @@
 define() gun {
     return {
         .name = "RPG-7",
-        .rate_of_fire = 200,
-        .full_auto = true,
+        .rounds_per_minute = 200,
+        .full_auto = false,
     }
 }
 

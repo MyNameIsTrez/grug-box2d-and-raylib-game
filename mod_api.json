@@ -8,7 +8,7 @@
 					"type": "string"
 				},
 				{
-					"name": "rate_of_fire",
+					"name": "rounds_per_minute",
 					"type": "i32"
 				},
 				{
