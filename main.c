@@ -99,12 +99,6 @@ float game_fn_rand(float min, float max) {
     return min + rand() / (double)RAND_MAX * range;
 }
 
-float game_fn_get_angle(int32_t entity_id) {
-	(void)entity_id;
-	// TODO: Implement
-	return 4.2f;
-}
-
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture);
 
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, float velocity_in_meters_per_second) {

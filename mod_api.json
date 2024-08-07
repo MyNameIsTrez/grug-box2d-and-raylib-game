@@ -55,16 +55,6 @@
 				}
 			]
 		},
-		"get_angle": {
-			"description": "Gets the angle of the gun in radians.",
-			"return_type": "f32",
-			"arguments": [
-				{
-					"name": "entity_id",
-					"type": "i32"
-				}
-			]
-		},
 		"rand": {
 			"description": "Gets a random f32 between min and max.",
 			"return_type": "f32",
