@@ -1,0 +1,6 @@
+define() bullet {
+    return {
+        .name = "PG-7VL",
+        .mass = 2.6,
+    }
+}

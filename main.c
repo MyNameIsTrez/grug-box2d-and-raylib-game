@@ -112,7 +112,7 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, 
 	b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
 
 	b2Rot rot = b2Body_GetRotation(gun->body_id);
-	// b2Rot_GetAngle(); // TODO: Add angle_in_radians
+	rot = b2MakeRot(b2Rot_GetAngle(rot) + angle_in_radians);
 
 	b2Vec2 velocity_unrotated = (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0};
 	b2Vec2 velocity = b2RotateVector(rot, velocity_unrotated);
@@ -355,7 +355,7 @@ int main(void) {
 	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
 	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
-	bullet_texture = LoadTexture("mods/vanilla/rpg7/rpg.png");
+	bullet_texture = LoadTexture("mods/vanilla/rpg7/PG-7VL.png");
 
 	gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 

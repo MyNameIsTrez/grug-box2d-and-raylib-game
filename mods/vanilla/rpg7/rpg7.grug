@@ -1,26 +1,31 @@
 define() gun {
     return {
         .name = "RPG-7",
-        .rounds_per_minute = 200,
+        .rounds_per_minute = 6000,
         .full_auto = true,
     }
 }
 
+shots: i32 = 0
+
 on_fire(self: i32) {
+    shots = (shots % 60) + 1
     i: i32 = 0
-    while i < 1 {
+    while i < shots {
         helper_shoot(self)
         i = i + 1
     }
 }
 
+pi: f32 = 3.1415926535897932384626433832795028841971693993751058209749445923
+
 helper_shoot(self: i32) {
     x: f32 = 0.0
-    y: f32 = 0.0
-    angle: f32 = 0.0
+    y: f32 = rand(-10.0, 10.0)
+    angle: f32 = helper_weighted_rand(-0.15, 0.15) * pi
     velocity: f32 = helper_weighted_rand(1.0, 50.0)
 
-    spawn_bullet("rpg", x, y, angle, velocity)
+    spawn_bullet("PG-7VL", x, y, angle, velocity)
 }
 
 # The highest chance is a number in the center of a and b
