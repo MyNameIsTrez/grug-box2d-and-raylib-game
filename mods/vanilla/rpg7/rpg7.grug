@@ -26,5 +26,5 @@ helper_shoot(self: i32) {
 # The highest chance is a number in the center of a and b
 # This is basically like rolling two dice and using the sum
 helper_weighted_rand(a: f32, b: f32) f32 {
-    return (rand(0.0, 0.5) - rand(0.0, 0.5) + 0.5) * (b - a) + a
+    return (rand(0.0, 0.5) + rand(0.0, 0.5)) * (b - a) + a
 }
