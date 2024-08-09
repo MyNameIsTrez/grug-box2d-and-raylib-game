@@ -72,8 +72,6 @@ static bool debug_info = true;
 
 static void *gun_globals;
 
-static float gun_angle;
-
 void on_gun_fire(void *globals, int32_t self);
 
 struct gun_on_fns {
@@ -101,9 +99,8 @@ float game_fn_rand(float min, float max) {
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture);
 
-void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, float velocity_in_meters_per_second) {
+void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
 	(void)name; // TODO: Use
-	(void)angle_in_radians; // TODO: Use
 
 	b2Vec2 local_point = {
 		.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f + x,
@@ -112,7 +109,10 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_radians, 
 	b2Vec2 muzzle_pos = b2Body_GetWorldPoint(gun->body_id, local_point);
 
 	b2Rot rot = b2Body_GetRotation(gun->body_id);
-	rot = b2MakeRot(b2Rot_GetAngle(rot) + angle_in_radians);
+	double gun_angle = b2Rot_GetAngle(rot);
+	double added_angle = angle_in_degrees * DEG2RAD;
+	bool facing_left = (gun_angle > PI / 2) || (gun_angle < -PI / 2);
+	rot = b2MakeRot(gun_angle + added_angle * (facing_left ? -1 : 1));
 
 	b2Vec2 velocity_unrotated = (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0};
 	b2Vec2 velocity = b2RotateVector(rot, velocity_unrotated);
@@ -457,7 +457,7 @@ int main(void) {
 		b2Vec2 gun_world_pos = b2Body_GetPosition(gun->body_id);
 		Vector2 gun_screen_pos = world_to_screen(gun_world_pos);
 		Vector2 gun_to_mouse = Vector2Subtract(mouse_pos, gun_screen_pos);
-		gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
+		double gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
 		record("calculating gun_angle");
 
 		struct timespec current_time;

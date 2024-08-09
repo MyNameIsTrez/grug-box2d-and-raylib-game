@@ -7,9 +7,11 @@ define() gun {
 }
 
 shots: i32 = 0
+shots_per_fire: i32 = 10
 
 on_fire(self: i32) {
-    shots = (shots % 60) + 1
+    shots = (shots % shots_per_fire) + 1
+
     i: i32 = 0
     while i < shots {
         helper_shoot(self)
@@ -17,12 +19,10 @@ on_fire(self: i32) {
     }
 }
 
-pi: f32 = 3.1415926535897932384626433832795028841971693993751058209749445923
-
 helper_shoot(self: i32) {
     x: f32 = 0.0
-    y: f32 = rand(-10.0, 10.0)
-    angle: f32 = helper_weighted_rand(-0.15, 0.15) * pi
+    y: f32 = 0.0
+    angle: f32 = helper_weighted_rand(-45.0, 45.0)
     velocity: f32 = helper_weighted_rand(1.0, 50.0)
 
     spawn_bullet("PG-7VL", x, y, angle, velocity)

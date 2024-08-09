@@ -46,7 +46,7 @@
 					"type": "f32"
 				},
 				{
-					"name": "angle_in_radians",
+					"name": "angle_in_degrees",
 					"type": "f32"
 				},
 				{
