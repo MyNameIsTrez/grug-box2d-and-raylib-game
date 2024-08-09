@@ -367,8 +367,8 @@ int main(void) {
 	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
-	Texture gun_texture = LoadTexture("mods/vanilla/RPG7/RPG7.png");
-	bullet_texture = LoadTexture("mods/vanilla/RPG7/PG-7VL.png");
+	Texture gun_texture = LoadTexture("mods/vanilla/RPG-7/RPG-7.png");
+	bullet_texture = LoadTexture("mods/vanilla/RPG-7/PG-7VL.png");
 
 	gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 
