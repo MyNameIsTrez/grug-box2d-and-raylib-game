@@ -41,6 +41,11 @@ struct gun {
 	bool full_auto;
 };
 
+struct bullet {
+	char *name;
+	float mass;
+};
+
 static struct entity entities[MAX_ENTITIES];
 static size_t entities_size;
 static size_t drawn_entities;
@@ -62,6 +67,7 @@ static struct measurement measurements[MAX_MEASUREMENTS];
 static size_t measurements_size;
 
 static struct gun gun_definition;
+static struct bullet bullet_definition;
 
 static struct entity *gun;
 
@@ -117,6 +123,13 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, 
 	b2Vec2 velocity_unrotated = (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0};
 	b2Vec2 velocity = b2RotateVector(rot, velocity_unrotated);
 	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
+}
+
+void game_fn_define_bullet(char *name, float mass) {
+	bullet_definition = (struct bullet){
+		.name = name,
+		.mass = mass,
+	};
 }
 
 void game_fn_define_gun(char *name, int32_t rounds_per_minute, bool full_auto) {
@@ -354,8 +367,8 @@ int main(void) {
 	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
-	Texture gun_texture = LoadTexture("mods/vanilla/rpg7/rpg7.png");
-	bullet_texture = LoadTexture("mods/vanilla/rpg7/PG-7VL.png");
+	Texture gun_texture = LoadTexture("mods/vanilla/RPG7/RPG7.png");
+	bullet_texture = LoadTexture("mods/vanilla/RPG7/PG-7VL.png");
 
 	gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 

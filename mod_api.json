@@ -27,6 +27,19 @@
 					]
 				}
 			}
+		},
+		"bullet": {
+			"description": "The bullet fired by the player's gun.",
+			"fields": [
+				{
+					"name": "name",
+					"type": "string"
+				},
+				{
+					"name": "mass",
+					"type": "f32"
+				}
+			]
 		}
 	},
 	"game_functions": {
