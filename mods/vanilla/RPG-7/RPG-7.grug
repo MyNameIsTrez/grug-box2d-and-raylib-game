@@ -1,14 +1,6 @@
-used_entities() {
-    return {
-        .entity_bullet = "vanilla/PG-7VL",
-    }
-}
+bullet: entity = "vanilla/PG-7VL"
 
-used_resources() {
-    return {
-        .resource_shot = "RPG-7/shot.png",
-    }
-}
+shot: resource = "RPG-7/shot.mp3"
 
 define() gun {
     return {
@@ -38,8 +30,8 @@ helper_shoot(self: i32) {
     # angle: f32 = 45.0
     velocity: f32 = helper_weighted_rand(1.0, 50.0)
 
-    spawn_bullet(entity_bullet, x, y, angle, velocity)
-    play_sound(resource_shot)
+    spawn_bullet(bullet, x, y, angle, velocity)
+    play_sound(shot)
 }
 
 # The highest chance is a number in the center of a and b
