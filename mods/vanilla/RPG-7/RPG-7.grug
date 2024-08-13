@@ -1,4 +1,4 @@
-bullet: entity = "vanilla/PG-7VL"
+bullet: entity = "vanilla:PG-7VL"
 
 shot: resource = "RPG-7/shot.mp3"
 
