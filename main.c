@@ -86,6 +86,11 @@ struct gun_on_fns {
 
 static struct gun_on_fns *gun_on_fns;
 
+void game_fn_play_sound(char *path) {
+	(void)path;
+	// TODO: Implement with raylib's sound playing functions
+}
+
 void game_fn_print_string(char *s) {
 	printf("%s\n", s);
 }

@@ -108,6 +108,15 @@
 					"type": "string"
 				}
 			]
+		},
+		"play_sound": {
+			"description": "Plays a sound.",
+			"arguments": [
+				{
+					"name": "path",
+					"type": "string"
+				}
+			]
 		}
 	}
 }
