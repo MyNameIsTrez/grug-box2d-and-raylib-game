@@ -52,8 +52,11 @@ static size_t drawn_entities;
 
 static int debug_line_number;
 
+static bool had_error;
+
 static b2WorldId world_id;
 
+static Texture background_texture;
 static Texture crate_texture;
 static Texture concrete_texture;
 static Texture bullet_texture;
@@ -182,13 +185,6 @@ static void draw_debug_info(void) {
 	}
 }
 
-static void record(char *description) {
-	if (debug_info) {
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &measurements[measurements_size].time);
-		measurements[measurements_size++].description = description;
-	}
-}
-
 static Vector2 world_to_screen(b2Vec2 p) {
 	return (Vector2){
 		  p.x * TEXTURE_SCALE + SCREEN_WIDTH  / 2.0f,
@@ -239,6 +235,46 @@ static void draw_entity(struct entity entity) {
 	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
 
 	drawn_entities++;
+}
+
+static void record(char *description) {
+	if (debug_info) {
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &measurements[measurements_size].time);
+		measurements[measurements_size++].description = description;
+	}
+}
+
+static void draw(void) {
+	BeginDrawing();
+	record("beginning drawing");
+
+	DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
+	record("drawing background");
+
+	drawn_entities = 0;
+	for (size_t i = 0; i < entities_size; i++) {
+		draw_entity(entities[i]);
+	}
+	record("drawing entities");
+
+	// Color red = {.r=242, .g=42, .b=42, .a=255};
+	// DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
+	// record("drawing gun line");
+
+	if (had_error) {
+		static char err[420420];
+		snprintf(err, sizeof(err), "%s:%d: %s (detected by grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
+		DrawText(err, SCREEN_WIDTH / 2 - MeasureText(err, FONT_SIZE) / 2, SCREEN_HEIGHT / 2, FONT_SIZE, RAYWHITE);
+		record("drawing error message");
+	}
+
+	record("end");
+
+	if (debug_info) {
+		draw_debug_info();
+	}
+
+	EndDrawing();
 }
 
 static void remove_entity(size_t entity_index) {
@@ -351,10 +387,10 @@ static void reload_modified_grug_entities(void) {
 }
 
 int main(void) {
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
-
 	// SetTargetFPS(60);
+
 	SetConfigFlags(FLAG_VSYNC_HINT);
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
 
 	b2SetLengthUnitsPerMeter(PIXELS_PER_METER);
 
@@ -362,7 +398,7 @@ int main(void) {
 	world_def.gravity.y = -9.8f * PIXELS_PER_METER;
 	world_id = b2CreateWorld(&world_def);
 
-	Texture background_texture = LoadTexture("mods/vanilla/background.png");
+	background_texture = LoadTexture("mods/vanilla/background.png");
 	crate_texture = LoadTexture("mods/vanilla/crate.png");
 	concrete_texture = LoadTexture("mods/vanilla/concrete.png");
 	// Texture gun_texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
@@ -391,18 +427,15 @@ int main(void) {
 		record("start");
 
 		if (grug_regenerate_modified_mods()) {
-			if (grug_error.has_changed) {
-				fprintf(stderr, "%s:%d: %s (detected in grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
-			}
+			had_error = true;
 
-			// Prevents the OS from showing a popup that we are unresponsive
-			BeginDrawing();
-			EndDrawing();
+			draw();
 
 			sleep(1);
 
 			continue;
 		}
+		had_error = false;
 		record("mod regeneration");
 
 		reload_modified_grug_entities();
@@ -491,29 +524,7 @@ int main(void) {
 		b2Body_SetTransform(gun->body_id, gun_world_pos, b2MakeRot(gun_angle));
 		record("point gun to mouse");
 
-		BeginDrawing();
-		record("beginning drawing");
-
-		DrawTextureEx(background_texture, Vector2Zero(), 0, 2, WHITE);
-		record("drawing background");
-
-		drawn_entities = 0;
-		for (size_t i = 0; i < entities_size; i++) {
-			draw_entity(entities[i]);
-		}
-		record("drawing entities");
-
-		Color red = {.r=242, .g=42, .b=42, .a=255};
-		DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
-		record("drawing gun line");
-
-		record("end");
-
-		if (debug_info) {
-			draw_debug_info();
-		}
-
-		EndDrawing();
+		draw();
 	}
 
 	// TODO: Are these necessary?
