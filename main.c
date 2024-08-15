@@ -337,8 +337,6 @@ static void reload_modified_grug_entities(void) {
 
 		printf("Reloading %s\n", reload.path);
 
-		reload.define_fn();
-
 		free(gun_globals);
 		gun_globals = malloc(reload.globals_size);
 		reload.init_globals_fn(gun_globals);
