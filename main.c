@@ -81,6 +81,8 @@ static bool debug_info = true;
 
 static void *gun_globals;
 
+static char error_message[420420];
+
 void on_gun_fire(void *globals, int32_t self);
 
 struct gun_on_fns {
@@ -262,9 +264,7 @@ static void draw(void) {
 	// record("drawing gun line");
 
 	if (had_error) {
-		static char err[420420];
-		snprintf(err, sizeof(err), "%s:%d: %s (detected by grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
-		DrawText(err, SCREEN_WIDTH / 2 - MeasureText(err, FONT_SIZE) / 2, SCREEN_HEIGHT / 2, FONT_SIZE, RAYWHITE);
+		DrawText(error_message, SCREEN_WIDTH / 2 - MeasureText(error_message, FONT_SIZE) / 2, SCREEN_HEIGHT / 2, FONT_SIZE, RAYWHITE);
 		record("drawing error message");
 	}
 
@@ -426,8 +426,31 @@ int main(void) {
 		measurements_size = 0;
 		record("start");
 
-		if (grug_regenerate_modified_mods()) {
+		printf("a\n");
+
+		if (grug_mod_had_runtime_error()) {
 			had_error = true;
+
+			snprintf(error_message, sizeof(error_message), "%s\n", grug_get_runtime_error_reason());
+
+			draw();
+
+			printf("b\n");
+
+			sleep(1);
+
+			continue;
+		}
+		had_error = false;
+		record("checking for runtime error");
+
+		printf("c\n");
+
+		if (grug_regenerate_modified_mods()) {
+			printf("d\n");
+			had_error = true;
+
+			snprintf(error_message, sizeof(error_message), "%s:%d: %s (detected by grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
 
 			draw();
 
@@ -435,6 +458,7 @@ int main(void) {
 
 			continue;
 		}
+		printf("e\n");
 		had_error = false;
 		record("mod regeneration");
 
