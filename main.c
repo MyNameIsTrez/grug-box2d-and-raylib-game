@@ -6,6 +6,7 @@
 #include "raylib.h"
 #include "raymath.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,10 +17,14 @@
 #define SCREEN_HEIGHT 720
 #define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
-#define MAX_ENTITIES 420420
+#define MAX_ENTITIES 1000 // Prevents box2d crashing when there's more than 32k overlapping entities, which can happen when the game is paused and the player shoots over 32k bullets
 #define FONT_SIZE 20
 #define MAX_MEASUREMENTS 420
 #define MAX_TYPE_FILES 420420
+#define MAX_ERROR_MESSAGES 5
+#define MAX_ERROR_MESSAGE_LENGTH 420420
+#define ERROR_MESSAGE_DURATION_MS 5000
+#define ERROR_MESSAGE_FADING_MOMENT_MS 4000
 
 enum entity_type {
 	OBJECT_GUN,
@@ -52,8 +57,6 @@ static size_t drawn_entities;
 
 static int debug_line_number;
 
-static bool had_error;
-
 static b2WorldId world_id;
 
 static Texture background_texture;
@@ -81,7 +84,14 @@ static bool debug_info = true;
 
 static void *gun_globals;
 
-static char error_message[420420];
+struct error_data {
+	char message[MAX_ERROR_MESSAGE_LENGTH];
+	struct timespec time;
+};
+
+static struct error_data error_messages[MAX_ERROR_MESSAGES];
+static size_t error_messages_size;
+static size_t error_messages_start;
 
 void on_gun_fire(void *globals, int32_t self);
 
@@ -263,10 +273,42 @@ static void draw(void) {
 	// DrawLine(gun_screen_pos.x, gun_screen_pos.y, mouse_pos.x, mouse_pos.y, red);
 	// record("drawing gun line");
 
-	if (had_error) {
-		DrawText(error_message, SCREEN_WIDTH / 2 - MeasureText(error_message, FONT_SIZE) / 2, SCREEN_HEIGHT / 2, FONT_SIZE, RAYWHITE);
-		record("drawing error message");
+	struct timespec current_time;
+	clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+	size_t i = 0;
+	size_t start = error_messages_start;
+	size_t size = error_messages_size;
+	while (i < size) {
+		double elapsed_ms = get_elapsed_ms(error_messages[(start + i) % MAX_ERROR_MESSAGES].time, current_time);
+		if (elapsed_ms < ERROR_MESSAGE_DURATION_MS) {
+			break;
+		}
+
+		// Remove the old error message
+		error_messages_start = (error_messages_start + 1) % MAX_ERROR_MESSAGES;
+		error_messages_size--;
+
+		i++;
 	}
+	record("clearing old error messages");
+
+	for (i = 0; i < error_messages_size; i++) {
+		Color color = RAYWHITE;
+
+		double elapsed_ms = get_elapsed_ms(error_messages[(error_messages_start + i) % MAX_ERROR_MESSAGES].time, current_time);
+		if (elapsed_ms > ERROR_MESSAGE_FADING_MOMENT_MS) {
+			double alpha = 255.0 * (ERROR_MESSAGE_DURATION_MS - elapsed_ms) / (double)(ERROR_MESSAGE_DURATION_MS - ERROR_MESSAGE_FADING_MOMENT_MS);
+			if (alpha < 0.0) {
+				alpha = 0.0;
+			}
+			assert(alpha >= 0.0 && alpha <= 255.0);
+			color.a = alpha;
+		}
+
+		DrawText(error_messages[(error_messages_start + i) % MAX_ERROR_MESSAGES].message, 0, SCREEN_HEIGHT - FONT_SIZE * (error_messages_size - i), FONT_SIZE, color);
+	}
+	record("drawing error message");
 
 	record("end");
 
@@ -286,6 +328,10 @@ static void remove_entity(size_t entity_index) {
 }
 
 static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, bool flippable) {
+	if (entities_size >= MAX_ENTITIES) {
+		return;
+	}
+
 	b2BodyId body_id = b2CreateBody(world_id, &body_def);
 
 	b2ShapeDef shape_def = b2DefaultShapeDef();
@@ -372,6 +418,21 @@ static struct grug_file *get_type_files(char *fn_name) {
 	return type_files;
 }
 
+static void add_error_message(char message[MAX_ERROR_MESSAGE_LENGTH]) {
+	struct error_data *error = &error_messages[(error_messages_start + error_messages_size) % MAX_ERROR_MESSAGES];
+
+	if (error_messages_size < MAX_ERROR_MESSAGES) {
+		error_messages_size++;
+	} else {
+		// We'll be overwriting the oldest message
+		error_messages_start = (error_messages_start + 1) % MAX_ERROR_MESSAGES;
+	}
+
+	strncpy(error->message, message, MAX_ERROR_MESSAGE_LENGTH);
+
+	clock_gettime(CLOCK_MONOTONIC, &error->time);
+}
+
 static void reload_modified_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
 		struct grug_modified reload = grug_reloads[reload_index];
@@ -426,40 +487,30 @@ int main(void) {
 		measurements_size = 0;
 		record("start");
 
-		printf("a\n");
-
 		if (grug_mod_had_runtime_error()) {
-			had_error = true;
-
-			snprintf(error_message, sizeof(error_message), "%s\n", grug_get_runtime_error_reason());
+			char error_message[MAX_ERROR_MESSAGE_LENGTH];
+			snprintf(error_message, MAX_ERROR_MESSAGE_LENGTH, "%s\n", grug_get_runtime_error_reason());
+			add_error_message(error_message);
 
 			draw();
-
-			printf("b\n");
 
 			sleep(1);
 
 			continue;
 		}
-		had_error = false;
 		record("checking for runtime error");
 
-		printf("c\n");
-
 		if (grug_regenerate_modified_mods()) {
-			printf("d\n");
-			had_error = true;
-
+			char error_message[MAX_ERROR_MESSAGE_LENGTH];
 			snprintf(error_message, sizeof(error_message), "%s:%d: %s (detected by grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
+			add_error_message(error_message);
 
 			draw();
 
-			sleep(1);
+			// sleep(1);
 
 			continue;
 		}
-		printf("e\n");
-		had_error = false;
 		record("mod regeneration");
 
 		reload_modified_grug_entities();

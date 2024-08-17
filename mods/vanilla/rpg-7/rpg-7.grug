@@ -6,32 +6,17 @@ define() gun {
     }
 }
 
-shots: i32 = 0
-shots_per_fire: i32 = 10
-
 on_fire(self: i32) {
-    shots = (shots % shots_per_fire) + 1
+    # i: i32 = 0
+    # while i < 10 {
+    #     i = i + 1 # Comment this out to cause a time limit exceeded error
 
-    i: i32 = 0
-    while i < shots {
-        helper_shoot(self)
-        # i = i + 1
-    }
+    #     # i = 42 / 0 # Comment this in to cause a division by 0 error
+    # }
+
+    helper_infinite_recursion()
 }
 
-helper_shoot(self: i32) {
-    x: f32 = 0.0
-    y: f32 = 0.0
-    angle: f32 = helper_weighted_rand(-45.0, 45.0)
-    # angle: f32 = 45.0
-    velocity: f32 = helper_weighted_rand(1.0, 50.0)
-
-    spawn_bullet("vanilla:pg-7vl", x, y, angle, velocity)
-    play_sound("rpg-7/shot.mp3")
-}
-
-# The highest chance is a number in the center of a and b
-# This is basically like rolling two dice and using the sum
-helper_weighted_rand(a: f32, b: f32) f32 {
-    return a + (rand(0.0, 0.5) + rand(0.0, 0.5)) * (b - a)
+helper_infinite_recursion() {
+    helper_infinite_recursion()
 }
