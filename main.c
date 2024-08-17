@@ -25,6 +25,7 @@
 #define MAX_ERROR_MESSAGE_LENGTH 420420
 #define ERROR_MESSAGE_DURATION_MS 5000
 #define ERROR_MESSAGE_FADING_MOMENT_MS 4000
+#define NANOSECONDS_PER_SECOND 1000000000L
 
 enum entity_type {
 	OBJECT_GUN,
@@ -494,7 +495,11 @@ int main(void) {
 
 			draw();
 
-			sleep(1);
+			// struct timespec req = {
+			// 	.tv_sec = 0,
+			// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
+			// };
+			// nanosleep(&req, NULL);
 
 			continue;
 		}
@@ -507,7 +512,11 @@ int main(void) {
 
 			draw();
 
-			// sleep(1);
+			// struct timespec req = {
+			// 	.tv_sec = 0,
+			// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
+			// };
+			// nanosleep(&req, NULL);
 
 			continue;
 		}
