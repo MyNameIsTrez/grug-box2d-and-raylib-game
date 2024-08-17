@@ -21,8 +21,8 @@
 #define FONT_SIZE 20
 #define MAX_MEASUREMENTS 420
 #define MAX_TYPE_FILES 420420
-#define MAX_ERROR_MESSAGES 5
-#define MAX_ERROR_MESSAGE_LENGTH 420420
+#define MAX_MESSAGES 10
+#define MAX_MESSAGE_LENGTH 420420
 #define ERROR_MESSAGE_DURATION_MS 5000
 #define ERROR_MESSAGE_FADING_MOMENT_MS 4000
 #define NANOSECONDS_PER_SECOND 1000000000L
@@ -85,14 +85,15 @@ static bool debug_info = true;
 
 static void *gun_globals;
 
-struct error_data {
-	char message[MAX_ERROR_MESSAGE_LENGTH];
+struct message_data {
+	char message[MAX_MESSAGE_LENGTH];
 	struct timespec time;
 };
 
-static struct error_data error_messages[MAX_ERROR_MESSAGES];
-static size_t error_messages_size;
-static size_t error_messages_start;
+static struct message_data messages[MAX_MESSAGES];
+static size_t messages_size;
+static size_t messages_start;
+static char message[MAX_MESSAGE_LENGTH];
 
 void on_gun_fire(void *globals, int32_t self);
 
@@ -107,16 +108,21 @@ void game_fn_play_sound(char *path) {
 	// TODO: Implement with raylib's sound playing functions
 }
 
+static void add_message(void);
+
 void game_fn_print_string(char *s) {
-	printf("%s\n", s);
+	snprintf(message, sizeof(message), "%s\n", s);
+	add_message();
 }
 
 void game_fn_print_f32(float f) {
-	printf("%f\n", f);
+	snprintf(message, sizeof(message), "%f\n", f);
+	add_message();
 }
 
 void game_fn_print_i32(int32_t i) {
-	printf("%d\n", i);
+	snprintf(message, sizeof(message), "%d\n", i);
+	add_message();
 }
 
 float game_fn_rand(float min, float max) {
@@ -278,26 +284,26 @@ static void draw(void) {
 	clock_gettime(CLOCK_MONOTONIC, &current_time);
 
 	size_t i = 0;
-	size_t start = error_messages_start;
-	size_t size = error_messages_size;
+	size_t start = messages_start;
+	size_t size = messages_size;
 	while (i < size) {
-		double elapsed_ms = get_elapsed_ms(error_messages[(start + i) % MAX_ERROR_MESSAGES].time, current_time);
+		double elapsed_ms = get_elapsed_ms(messages[(start + i) % MAX_MESSAGES].time, current_time);
 		if (elapsed_ms < ERROR_MESSAGE_DURATION_MS) {
 			break;
 		}
 
 		// Remove the old error message
-		error_messages_start = (error_messages_start + 1) % MAX_ERROR_MESSAGES;
-		error_messages_size--;
+		messages_start = (messages_start + 1) % MAX_MESSAGES;
+		messages_size--;
 
 		i++;
 	}
 	record("clearing old error messages");
 
-	for (i = 0; i < error_messages_size; i++) {
+	for (i = 0; i < messages_size; i++) {
 		Color color = RAYWHITE;
 
-		double elapsed_ms = get_elapsed_ms(error_messages[(error_messages_start + i) % MAX_ERROR_MESSAGES].time, current_time);
+		double elapsed_ms = get_elapsed_ms(messages[(messages_start + i) % MAX_MESSAGES].time, current_time);
 		if (elapsed_ms > ERROR_MESSAGE_FADING_MOMENT_MS) {
 			double alpha = 255.0 * (ERROR_MESSAGE_DURATION_MS - elapsed_ms) / (double)(ERROR_MESSAGE_DURATION_MS - ERROR_MESSAGE_FADING_MOMENT_MS);
 			if (alpha < 0.0) {
@@ -307,7 +313,7 @@ static void draw(void) {
 			color.a = alpha;
 		}
 
-		DrawText(error_messages[(error_messages_start + i) % MAX_ERROR_MESSAGES].message, 0, SCREEN_HEIGHT - FONT_SIZE * (error_messages_size - i), FONT_SIZE, color);
+		DrawText(messages[(messages_start + i) % MAX_MESSAGES].message, 0, SCREEN_HEIGHT - FONT_SIZE * (messages_size - i), FONT_SIZE, color);
 	}
 	record("drawing error message");
 
@@ -375,7 +381,6 @@ static void spawn_crates(Texture texture) {
 		b2BodyDef body_def = b2DefaultBodyDef();
 		body_def.type = b2_dynamicBody;
 		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 1000.0f };
-		// body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 42.0f };
 		body_def.userData = (void *)entities_size;
 
 		spawn_entity(body_def, OBJECT_CRATE, texture, false);
@@ -419,17 +424,17 @@ static struct grug_file *get_type_files(char *fn_name) {
 	return type_files;
 }
 
-static void add_error_message(char message[MAX_ERROR_MESSAGE_LENGTH]) {
-	struct error_data *error = &error_messages[(error_messages_start + error_messages_size) % MAX_ERROR_MESSAGES];
+static void add_message(void) {
+	struct message_data *error = &messages[(messages_start + messages_size) % MAX_MESSAGES];
 
-	if (error_messages_size < MAX_ERROR_MESSAGES) {
-		error_messages_size++;
+	if (messages_size < MAX_MESSAGES) {
+		messages_size++;
 	} else {
 		// We'll be overwriting the oldest message
-		error_messages_start = (error_messages_start + 1) % MAX_ERROR_MESSAGES;
+		messages_start = (messages_start + 1) % MAX_MESSAGES;
 	}
 
-	strncpy(error->message, message, MAX_ERROR_MESSAGE_LENGTH);
+	strncpy(error->message, message, MAX_MESSAGE_LENGTH);
 
 	clock_gettime(CLOCK_MONOTONIC, &error->time);
 }
@@ -489,9 +494,8 @@ int main(void) {
 		record("start");
 
 		if (grug_mod_had_runtime_error()) {
-			char error_message[MAX_ERROR_MESSAGE_LENGTH];
-			snprintf(error_message, MAX_ERROR_MESSAGE_LENGTH, "%s\n", grug_get_runtime_error_reason());
-			add_error_message(error_message);
+			snprintf(message, sizeof(message), "Runtime error: %s\n", grug_get_runtime_error_reason());
+			add_message();
 
 			draw();
 
@@ -506,9 +510,8 @@ int main(void) {
 		record("checking for runtime error");
 
 		if (grug_regenerate_modified_mods()) {
-			char error_message[MAX_ERROR_MESSAGE_LENGTH];
-			snprintf(error_message, sizeof(error_message), "%s:%d: %s (detected by grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
-			add_error_message(error_message);
+			snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
+			add_message();
 
 			draw();
 

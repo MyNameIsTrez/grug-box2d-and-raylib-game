@@ -5,16 +5,19 @@ define() gun {
         .full_auto = true,
     }
 }
-
+# foo
 on_fire(self: i32) {
-    # i: i32 = 0
-    # while i < 10 {
-    #     i = i + 1 # Comment this out to cause a time limit exceeded error
+    # print_string("rand():")
+    # print_f32(rand(-10.0, 20.0))
 
-    #     # i = 42 / 0 # Comment this in to cause a division by 0 error
-    # }
+    i: i32 = 0
+    while i < 10 {
+        i = i + 1 # Comment this out to cause a time limit exceeded error
 
-    helper_infinite_recursion()
+        # i = 42 / 0 # Comment this in to cause a division by 0 error
+    }
+
+    # helper_infinite_recursion()
 }
 
 helper_infinite_recursion() {
