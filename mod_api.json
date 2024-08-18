@@ -109,6 +109,15 @@
 				}
 			]
 		},
+		"print_bool": {
+			"description": "Prints a bool.",
+			"arguments": [
+				{
+					"name": "b",
+					"type": "bool"
+				}
+			]
+		},
 		"play_sound": {
 			"description": "Plays a sound.",
 			"arguments": [

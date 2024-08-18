@@ -110,6 +110,11 @@ void game_fn_play_sound(char *path) {
 
 static void add_message(void);
 
+void game_fn_print_bool(bool b) {
+	snprintf(message, sizeof(message), "%s\n", b ? "true" : "false");
+	add_message();
+}
+
 void game_fn_print_string(char *s) {
 	snprintf(message, sizeof(message), "%s\n", s);
 	add_message();

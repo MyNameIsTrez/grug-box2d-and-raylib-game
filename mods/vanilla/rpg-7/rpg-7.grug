@@ -9,6 +9,7 @@ define() gun {
 on_fire(self: i32) {
     # print_string("rand():")
     # print_f32(rand(-10.0, 20.0))
+    print_bool("" != "")
 
     i: i32 = 0
     while i < 10 {
