@@ -76,7 +76,12 @@ static size_t measurements_size;
 static struct gun gun_definition;
 static struct bullet bullet_definition;
 
+static struct grug_file *guns;
+
 static struct entity *gun;
+
+static size_t gun_count;
+static size_t gun_index;
 
 static struct grug_file type_files[MAX_TYPE_FILES];
 static size_t type_files_size;
@@ -444,6 +449,17 @@ static void add_message(void) {
 	clock_gettime(CLOCK_MONOTONIC, &error->time);
 }
 
+static void reload_gun(void) {
+	struct grug_file file = guns[gun_index];
+
+	file.define_fn();
+
+	gun_globals = malloc(file.globals_size);
+	file.init_globals_fn(gun_globals);
+
+	gun_on_fns = file.on_fns;
+}
+
 static void reload_modified_grug_entities(void) {
 	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
 		struct grug_modified reload = grug_reloads[reload_index];
@@ -538,16 +554,22 @@ int main(void) {
 		if (!initialized) {
 			initialized = true;
 
-			struct grug_file *files_defining_gun = get_type_files("gun");
+			guns = get_type_files("gun");
+			gun_count = type_files_size;
 
-			struct grug_file file = files_defining_gun[0];
+			reload_gun();
+		}
 
-			file.define_fn();
-
-			gun_globals = malloc(file.globals_size);
-			file.init_globals_fn(gun_globals);
-
-			gun_on_fns = file.on_fns;
+		float mouse_movement = GetMouseWheelMove();
+		if (mouse_movement > 0) {
+			gun_index++;
+			gun_index %= gun_count;
+			reload_gun();
+		}
+		if (mouse_movement < 0) {
+			gun_index--;
+			gun_index %= gun_count;
+			reload_gun();
 		}
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info

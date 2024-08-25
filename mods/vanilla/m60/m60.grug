@@ -1,11 +1,11 @@
 define() gun {
     return {
-        .name = "RPG-7",
+        .name = "M60",
         .rounds_per_minute = 600,
         .full_auto = true,
     }
 }
 
 on_fire(self: i32) {
-    print_string("RPG-7")
+    print_string("M60")
 }
