@@ -43,6 +43,7 @@ struct entity {
 
 struct gun {
 	char *name;
+	char *sprite_path;
 	int32_t ms_per_round_fired;
 	bool full_auto;
 };
@@ -169,12 +170,13 @@ void game_fn_define_bullet(char *name, float mass) {
 	};
 }
 
-void game_fn_define_gun(char *name, int32_t rounds_per_minute, bool full_auto) {
+void game_fn_define_gun(char *name, char *sprite_path, int32_t rounds_per_minute, bool full_auto) {
 	double rounds_per_second = rounds_per_minute / 60.0;
 	double seconds_per_round = 1.0 / rounds_per_second;
 
 	gun_definition = (struct gun){
 		.name = name,
+		.sprite_path = sprite_path,
 		.ms_per_round_fired = seconds_per_round * 1000.0,
 		.full_auto = full_auto,
 	};

@@ -8,6 +8,10 @@
 					"type": "string"
 				},
 				{
+					"name": "sprite_path",
+					"type": "resource"
+				},
+				{
 					"name": "rounds_per_minute",
 					"type": "i32"
 				},
