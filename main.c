@@ -501,6 +501,8 @@ int main(void) {
 		if (grug_mod_had_runtime_error()) {
 			snprintf(message, sizeof(message), "Runtime error: %s\n", grug_get_runtime_error_reason());
 			add_message();
+			snprintf(message, sizeof(message), "Error occurred when the game called %s(), from %s\n", grug_on_fn_name, grug_on_fn_path);
+			add_message();
 
 			draw();
 

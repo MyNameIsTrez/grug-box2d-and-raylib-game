@@ -9,13 +9,13 @@ define() gun {
 on_fire(self: i32) {
     # print_string("rand():")
     # print_f32(rand(-10.0, 20.0))
-    print_bool("" != "")
+    # print_bool("" != "")
 
     i: i32 = 0
     while i < 10 {
         i = i + 1 # Comment this out to cause a time limit exceeded error
 
-        # i = 42 / 0 # Comment this in to cause a division by 0 error
+        i = 42 / 0 # Comment this in to cause a division by 0 error
     }
 
     # helper_infinite_recursion()
