@@ -37,6 +37,7 @@ enum entity_type {
 struct entity {
 	enum entity_type type;
 	b2BodyId body_id;
+	b2ShapeId shape_id;
 	Texture texture;
 	bool flippable;
 };
@@ -340,10 +341,26 @@ static void draw(void) {
 
 static void remove_entity(size_t entity_index) {
 	b2DestroyBody(entities[entity_index].body_id);
+
 	entities[entity_index] = entities[--entities_size];
+
+	if (entities[entity_index].type == OBJECT_GUN) {
+		gun = entities + entity_index;
+	}
+
+	// If the removed entity wasn't at the very end of the entities array,
+	// update entity_index's userdata
 	if (entity_index < entities_size) {
 		b2Body_SetUserData(entities[entity_index].body_id, (void *)entity_index);
 	}
+}
+
+static b2ShapeId add_shape(b2BodyId body_id, Texture texture) {
+	b2ShapeDef shape_def = b2DefaultShapeDef();
+
+	b2Polygon polygon = b2MakeBox(texture.width / 2.0f, texture.height / 2.0f);
+
+	return b2CreatePolygonShape(body_id, &shape_def, &polygon);
 }
 
 static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, bool flippable) {
@@ -353,13 +370,12 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture text
 
 	b2BodyId body_id = b2CreateBody(world_id, &body_def);
 
-	b2ShapeDef shape_def = b2DefaultShapeDef();
-	b2Polygon polygon = b2MakeBox(texture.width / 2.0f, texture.height / 2.0f);
-	b2CreatePolygonShape(body_id, &shape_def, &polygon);
+	b2ShapeId shape_id = add_shape(body_id, texture);
 
 	entities[entities_size++] = (struct entity){
 		.type = type,
 		.body_id = body_id,
+		.shape_id = shape_id,
 		.texture = texture,
 		.flippable = flippable,
 	};
@@ -451,6 +467,16 @@ static void add_message(void) {
 	clock_gettime(CLOCK_MONOTONIC, &error->time);
 }
 
+static void reload_gun_shape(void) {
+	printf("Reloading gun shape\n");
+
+	UnloadTexture(gun->texture);
+	gun->texture = LoadTexture(gun_definition.sprite_path);
+
+	b2DestroyShape(gun->shape_id);
+	gun->shape_id = add_shape(gun->body_id, gun->texture);
+}
+
 static void reload_gun(void) {
 	struct grug_file file = guns[gun_index];
 
@@ -473,6 +499,8 @@ static void reload_modified_grug_entities(void) {
 		reload.init_globals_fn(gun_globals);
 
 		gun_on_fns = reload.on_fns;
+
+		reload_gun_shape();
 	}
 }
 
@@ -491,15 +519,7 @@ int main(void) {
 	background_texture = LoadTexture("mods/vanilla/background.png");
 	crate_texture = LoadTexture("mods/vanilla/crate.png");
 	concrete_texture = LoadTexture("mods/vanilla/concrete.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/kar98k/kar98k.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/long/long.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/m16a2/m16a2.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/m60/m60.png");
-	// Texture gun_texture = LoadTexture("mods/vanilla/m79/m79.png");
-	Texture gun_texture = LoadTexture("mods/vanilla/rpg-7/rpg-7.png");
 	bullet_texture = LoadTexture("mods/vanilla/rpg-7/pg-7vl.png");
-
-	gun = spawn_gun((b2Vec2){ 100.0f, 0 }, gun_texture);
 
 	spawn_ground(concrete_texture);
 
@@ -560,6 +580,12 @@ int main(void) {
 			gun_count = type_files_size;
 
 			reload_gun();
+
+			b2Vec2 pos = { 100.0f, 0 };
+
+			Texture gun_texture = LoadTexture(gun_definition.sprite_path);
+
+			gun = spawn_gun(pos, gun_texture);
 		}
 
 		float mouse_movement = GetMouseWheelMove();
@@ -567,11 +593,13 @@ int main(void) {
 			gun_index++;
 			gun_index %= gun_count;
 			reload_gun();
+			reload_gun_shape();
 		}
 		if (mouse_movement < 0) {
 			gun_index--;
 			gun_index %= gun_count;
 			reload_gun();
+			reload_gun_shape();
 		}
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
@@ -649,7 +677,7 @@ int main(void) {
 	UnloadTexture(background_texture);
 	UnloadTexture(crate_texture);
 	UnloadTexture(concrete_texture);
-	UnloadTexture(gun_texture);
+	UnloadTexture(gun->texture);
 	UnloadTexture(bullet_texture);
 
 	// TODO: Is this necessary?
