@@ -500,7 +500,9 @@ static void reload_modified_grug_entities(void) {
 
 		gun_on_fns = reload.on_fns;
 
-		reload_gun_shape();
+		if (gun) {
+			reload_gun_shape();
+		}
 	}
 }
 
