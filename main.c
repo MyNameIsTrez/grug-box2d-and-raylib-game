@@ -470,8 +470,18 @@ static void add_message(void) {
 static void reload_gun_shape(void) {
 	printf("Reloading gun shape\n");
 
+	// Retrying this with a loop is for GIMP,
+	// since it doesn't write all bytes at once, causing LoadTexture() to fail
+	size_t attempts = 0;
+	Texture new_texture;
+	do {
+		new_texture = LoadTexture(gun_definition.sprite_path);
+		attempts++;
+	} while (new_texture.id == 0);
+	printf("Texture loaded after %zu attempts\n", attempts);
+
 	UnloadTexture(gun->texture);
-	gun->texture = LoadTexture(gun_definition.sprite_path);
+	gun->texture = new_texture;
 
 	b2DestroyShape(gun->shape_id);
 	gun->shape_id = add_shape(gun->body_id, gun->texture);
@@ -488,9 +498,24 @@ static void reload_gun(void) {
 	gun_on_fns = file.on_fns;
 }
 
+#include <sys/types.h> // TODO: REMOVE!
+#include <sys/wait.h> // TODO: REMOVE!
+
+static void reload_modified_grug_resources(void) {
+	for (size_t i = 0; i < grug_resource_reloads_size; i++) {
+		struct grug_modified_resource reload = grug_resource_reloads[i];
+
+		printf("Reloading resource %s\n", reload.path);
+
+		if (gun) {
+			reload_gun_shape();
+		}
+	}
+}
+
 static void reload_modified_grug_entities(void) {
-	for (size_t reload_index = 0; reload_index < grug_reloads_size; reload_index++) {
-		struct grug_modified reload = grug_reloads[reload_index];
+	for (size_t i = 0; i < grug_reloads_size; i++) {
+		struct grug_modified reload = grug_reloads[i];
 
 		printf("Reloading %s\n", reload.path);
 
@@ -519,9 +544,13 @@ int main(void) {
 	world_id = b2CreateWorld(&world_def);
 
 	background_texture = LoadTexture("mods/vanilla/background.png");
+	assert(background_texture.id > 0);
 	crate_texture = LoadTexture("mods/vanilla/crate.png");
+	assert(crate_texture.id > 0);
 	concrete_texture = LoadTexture("mods/vanilla/concrete.png");
+	assert(concrete_texture.id > 0);
 	bullet_texture = LoadTexture("mods/vanilla/rpg-7/pg-7vl.png");
+	assert(bullet_texture.id > 0);
 
 	spawn_ground(concrete_texture);
 
@@ -575,6 +604,9 @@ int main(void) {
 		reload_modified_grug_entities();
 		record("reloading entities");
 
+		reload_modified_grug_resources();
+		record("reloading resources");
+
 		if (!initialized) {
 			initialized = true;
 
@@ -586,6 +618,7 @@ int main(void) {
 			b2Vec2 pos = { 100.0f, 0 };
 
 			Texture gun_texture = LoadTexture(gun_definition.sprite_path);
+			assert(gun_texture.id > 0);
 
 			gun = spawn_gun(pos, gun_texture);
 		}
