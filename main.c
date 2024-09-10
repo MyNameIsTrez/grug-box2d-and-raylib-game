@@ -39,6 +39,7 @@ struct entity {
 	b2BodyId body_id;
 	b2ShapeId shape_id;
 	Texture texture;
+	char *texture_path;
 	bool flippable;
 };
 
@@ -142,10 +143,12 @@ float game_fn_rand(float min, float max) {
     return min + rand() / (double)RAND_MAX * range;
 }
 
-static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture);
+static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture, char *texture_path);
 
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
 	(void)name; // TODO: Use
+
+	char *bullet_texture_path = "mods/vanilla/rpg-7/pg-7vl.png"; // TODO: Unhardcode, using the name arg to look up the bullet entity type
 
 	b2Vec2 local_point = {
 		.x = gun->texture.width / 2.0f + bullet_texture.width / 2.0f + x,
@@ -161,7 +164,7 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, 
 
 	b2Vec2 velocity_unrotated = (b2Vec2){.x=velocity_in_meters_per_second * PIXELS_PER_METER, .y=0};
 	b2Vec2 velocity = b2RotateVector(rot, velocity_unrotated);
-	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture);
+	spawn_bullet(muzzle_pos, gun_angle, velocity, bullet_texture, bullet_texture_path);
 }
 
 void game_fn_define_bullet(char *name, float mass) {
@@ -181,6 +184,10 @@ void game_fn_define_gun(char *name, char *sprite_path, int32_t rounds_per_minute
 		.ms_per_round_fired = seconds_per_round * 1000.0,
 		.full_auto = full_auto,
 	};
+}
+
+static bool streq(char *a, char *b) {
+	return strcmp(a, b) == 0;
 }
 
 static double get_elapsed_ms(struct timespec start, struct timespec end) {
@@ -363,7 +370,7 @@ static b2ShapeId add_shape(b2BodyId body_id, Texture texture) {
 	return b2CreatePolygonShape(body_id, &shape_def, &polygon);
 }
 
-static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, bool flippable) {
+static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture texture, char *texture_path, bool flippable) {
 	if (entities_size >= MAX_ENTITIES) {
 		return;
 	}
@@ -377,11 +384,12 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture text
 		.body_id = body_id,
 		.shape_id = shape_id,
 		.texture = texture,
+		.texture_path = texture_path,
 		.flippable = flippable,
 	};
 }
 
-static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture) {
+static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture, char *texture_path) {
 	b2BodyDef body_def = b2DefaultBodyDef();
 	body_def.type = b2_dynamicBody;
 	body_def.position = pos;
@@ -389,20 +397,20 @@ static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture textu
 	body_def.linearVelocity = velocity;
 	body_def.userData = (void *)entities_size;
 
-	spawn_entity(body_def, OBJECT_BULLET, texture, false);
+	spawn_entity(body_def, OBJECT_BULLET, texture, texture_path, false);
 }
 
-static struct entity *spawn_gun(b2Vec2 pos, Texture texture) {
+static struct entity *spawn_gun(b2Vec2 pos, Texture texture, char *texture_path) {
 	b2BodyDef body_def = b2DefaultBodyDef();
 	body_def.position = pos;
 	body_def.userData = (void *)entities_size;
 
-	spawn_entity(body_def, OBJECT_GUN, texture, true);
+	spawn_entity(body_def, OBJECT_GUN, texture, texture_path, true);
 
 	return entities + entities_size - 1;
 }
 
-static void spawn_crates(Texture texture) {
+static void spawn_crates(Texture texture, char *texture_path) {
 	int spawned_crate_count = 160;
 
 	for (int i = 0; i < spawned_crate_count; i++) {
@@ -411,11 +419,11 @@ static void spawn_crates(Texture texture) {
 		body_def.position = (b2Vec2){ -100.0f, (i - spawned_crate_count / 2) * texture.height + 1000.0f };
 		body_def.userData = (void *)entities_size;
 
-		spawn_entity(body_def, OBJECT_CRATE, texture, false);
+		spawn_entity(body_def, OBJECT_CRATE, texture, texture_path, false);
 	}
 }
 
-static void spawn_ground(Texture texture) {
+static void spawn_ground(Texture texture, char *texture_path) {
 	int ground_entity_count = 16;
 
 	for (int i = 0; i < ground_entity_count; i++) {
@@ -423,7 +431,7 @@ static void spawn_ground(Texture texture) {
 		body_def.position = (b2Vec2){ (i - ground_entity_count / 2) * texture.width, -100.0f };
 		body_def.userData = (void *)entities_size;
 
-		spawn_entity(body_def, OBJECT_GROUND, texture, false);
+		spawn_entity(body_def, OBJECT_GROUND, texture, texture_path, false);
 	}
 }
 
@@ -467,24 +475,27 @@ static void add_message(void) {
 	clock_gettime(CLOCK_MONOTONIC, &error->time);
 }
 
-static void reload_gun_shape(void) {
-	printf("Reloading gun shape\n");
+static void reload_entity_shape(struct entity *entity, char *texture_path) {
+	printf("Reloading entity shape %s\n", texture_path);
 
-	// Retrying this with a loop is for GIMP,
-	// since it doesn't write all bytes at once, causing LoadTexture() to fail
+	// Retrying this in a loop is necessary for GIMP,
+	// since it doesn't write all bytes at once,
+	// causing the LoadTexture() after this loop to sporadically fail
 	size_t attempts = 0;
 	Texture new_texture;
 	do {
-		new_texture = LoadTexture(gun_definition.sprite_path);
+		new_texture = LoadTexture(texture_path);
 		attempts++;
 	} while (new_texture.id == 0);
-	printf("Texture loaded after %zu attempts\n", attempts);
+	printf("The reloaded entity's new texture took %zu attempts to load succesfully\n", attempts);
 
-	UnloadTexture(gun->texture);
-	gun->texture = new_texture;
+	UnloadTexture(entity->texture);
+	entity->texture = new_texture;
 
-	b2DestroyShape(gun->shape_id);
-	gun->shape_id = add_shape(gun->body_id, gun->texture);
+	entity->texture_path = texture_path;
+
+	b2DestroyShape(entity->shape_id);
+	entity->shape_id = add_shape(entity->body_id, entity->texture);
 }
 
 static void reload_gun(void) {
@@ -498,17 +509,18 @@ static void reload_gun(void) {
 	gun_on_fns = file.on_fns;
 }
 
-#include <sys/types.h> // TODO: REMOVE!
-#include <sys/wait.h> // TODO: REMOVE!
-
 static void reload_modified_grug_resources(void) {
 	for (size_t i = 0; i < grug_resource_reloads_size; i++) {
 		struct grug_modified_resource reload = grug_resource_reloads[i];
 
 		printf("Reloading resource %s\n", reload.path);
 
-		if (gun) {
-			reload_gun_shape();
+		for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
+			struct entity *entity = &entities[entity_index];
+
+			if (streq(reload.path, entity->texture_path)) {
+				reload_entity_shape(entity, gun_definition.sprite_path);
+			}
 		}
 	}
 }
@@ -526,7 +538,7 @@ static void reload_modified_grug_entities(void) {
 		gun_on_fns = reload.on_fns;
 
 		if (gun) {
-			reload_gun_shape();
+			reload_entity_shape(gun, gun_definition.sprite_path);
 		}
 	}
 }
@@ -552,9 +564,9 @@ int main(void) {
 	bullet_texture = LoadTexture("mods/vanilla/rpg-7/pg-7vl.png");
 	assert(bullet_texture.id > 0);
 
-	spawn_ground(concrete_texture);
+	spawn_ground(concrete_texture, "mods/vanilla/concrete.png");
 
-	spawn_crates(crate_texture);
+	spawn_crates(crate_texture, "mods/vanilla/crate.png");
 
 	bool paused = false;
 
@@ -620,7 +632,7 @@ int main(void) {
 			Texture gun_texture = LoadTexture(gun_definition.sprite_path);
 			assert(gun_texture.id > 0);
 
-			gun = spawn_gun(pos, gun_texture);
+			gun = spawn_gun(pos, gun_texture, gun_definition.sprite_path);
 		}
 
 		float mouse_movement = GetMouseWheelMove();
@@ -628,13 +640,13 @@ int main(void) {
 			gun_index++;
 			gun_index %= gun_count;
 			reload_gun();
-			reload_gun_shape();
+			reload_entity_shape(gun, gun_definition.sprite_path);
 		}
 		if (mouse_movement < 0) {
 			gun_index--;
 			gun_index %= gun_count;
 			reload_gun();
-			reload_gun_shape();
+			reload_entity_shape(gun, gun_definition.sprite_path);
 		}
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
@@ -644,7 +656,7 @@ int main(void) {
 			paused = !paused;
 		}
 		if (IsKeyPressed(KEY_S)) { // Spawn crates
-			spawn_crates(crate_texture);
+			spawn_crates(crate_texture, "mods/vanilla/crate.png");
 		}
 		if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
 			for (size_t i = entities_size; i > 0; i--) {
