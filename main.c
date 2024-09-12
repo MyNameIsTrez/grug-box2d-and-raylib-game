@@ -572,12 +572,12 @@ int main(void) {
 	world_def.gravity.y = -9.8f * PIXELS_PER_METER;
 	world_id = b2CreateWorld(&world_def);
 
-	background_texture = LoadTexture("mods/vanilla/background.png");
+	background_texture = LoadTexture("background.png");
 	assert(background_texture.id > 0);
 
-	spawn_ground("mods/vanilla/concrete.png");
+	spawn_ground("concrete.png");
 
-	spawn_crates("mods/vanilla/crate.png");
+	spawn_crates("crate.png");
 
 	bool paused = false;
 
@@ -663,11 +663,11 @@ int main(void) {
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
 			debug_info = !debug_info;
 		}
-		if (IsKeyPressed(KEY_P)) { // Pause
+		if (IsKeyPressed(KEY_P)) {
 			paused = !paused;
 		}
-		if (IsKeyPressed(KEY_S)) { // Spawn crates
-			spawn_crates("mods/vanilla/crate.png");
+		if (IsKeyPressed(KEY_S)) {
+			spawn_crates("crate.png");
 		}
 		if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
 			for (size_t i = entities_size; i > 0; i--) {
