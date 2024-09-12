@@ -40,6 +40,10 @@
 					"type": "string"
 				},
 				{
+					"name": "sprite_path",
+					"type": "resource"
+				},
+				{
 					"name": "mass",
 					"type": "f32"
 				}
