@@ -152,7 +152,7 @@ static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture textu
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
 	(void)name; // TODO: Use
 
-	char *texture_path = "mods/vanilla/rpg-7/pg-7vl.png"; // TODO: Unhardcode, using the name arg to look up the bullet entity type
+	char *texture_path = "mods/rpg-7/pg-7vl.png"; // TODO: Unhardcode, using the name arg to look up the bullet entity type
 
 	Texture texture = LoadTexture(texture_path);
 	assert(texture.id > 0);
