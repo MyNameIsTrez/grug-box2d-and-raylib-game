@@ -56,7 +56,7 @@
 			"arguments": [
 				{
 					"name": "name",
-					"type": "string"
+					"type": "entity"
 				},
 				{
 					"name": "x",

@@ -1,7 +1,7 @@
 define() gun {
     return {
         .name = "RPG-7",
-        .sprite_path = "rpg-7.png",
+        .sprite_path = "pg-7vl.png",
         .rounds_per_minute = 600,
         .full_auto = true,
     }

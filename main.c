@@ -18,7 +18,7 @@
 #define TEXTURE_SCALE 2.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define MAX_ENTITIES 1000 // Prevents box2d crashing when there's more than 32k overlapping entities, which can happen when the game is paused and the player shoots over 32k bullets
-#define FONT_SIZE 20
+#define FONT_SIZE 10
 #define MAX_MEASUREMENTS 420
 #define MAX_TYPE_FILES 420420
 #define MAX_MESSAGES 10
@@ -150,9 +150,11 @@ float game_fn_rand(float min, float max) {
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture, char *texture_path);
 
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
-	(void)name; // TODO: Use
+	struct grug_file *file = grug_get_entitity_file(name);
 
-	char *texture_path = "mods/rpg-7/pg-7vl.png"; // TODO: Unhardcode, using the name arg to look up the bullet entity type
+	file->define_fn();
+
+	char *texture_path = bullet_definition.sprite_path;
 
 	Texture texture = LoadTexture(texture_path);
 	assert(texture.id > 0);
@@ -609,7 +611,8 @@ int main(void) {
 		record("checking for runtime error");
 
 		if (grug_regenerate_modified_mods()) {
-			snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
+			// snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
+			snprintf(message, sizeof(message), "Loading error: %s:%d: %s (grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
 			add_message();
 
 			draw();

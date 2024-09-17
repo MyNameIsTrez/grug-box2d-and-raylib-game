@@ -9,4 +9,5 @@ define() gun {
 
 on_fire(self: i32) {
     print_string("M60")
+    spawn_bullet("rpg-7", 0.0, 0.0, 0.0, 100.0)
 }
