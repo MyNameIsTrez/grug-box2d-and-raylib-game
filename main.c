@@ -694,7 +694,7 @@ int main(void) {
 			for (int32_t i = 0; i < events.moveCount; i++) {
 				b2BodyMoveEvent *event = events.moveEvents + i;
 				// Remove entities that end up below the screen
-				if (event->transform.p.y < -SCREEN_HEIGHT / 2.0f / TEXTURE_SCALE + 30.0f) {
+				if (event->transform.p.y < -SCREEN_HEIGHT / 2.0f / TEXTURE_SCALE - 100.0f) {
 					removed_entities[(size_t)event->userData] = true;
 				}
 			}
