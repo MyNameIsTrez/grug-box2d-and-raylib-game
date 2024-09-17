@@ -506,7 +506,7 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 		new_texture = LoadTexture(texture_path);
 		attempts++;
 	} while (new_texture.id == 0);
-	printf("The reloaded entity's new texture took %zu attempts to load succesfully\n", attempts);
+	printf("The reloaded entity's new texture took %zu attempt%s to load succesfully\n", attempts, attempts == 1 ? "" : "s");
 
 	UnloadTexture(entity->texture);
 	entity->texture = new_texture;
