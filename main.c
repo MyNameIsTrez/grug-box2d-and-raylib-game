@@ -550,14 +550,21 @@ static void reload_modified_grug_entities(void) {
 
 		printf("Reloading %s\n", reload.path);
 
-		free(gun_globals);
-		gun_globals = malloc(reload.globals_size);
-		reload.init_globals_fn(gun_globals);
+		// TODO: Should reload.old_dll, or reload.new_dll maybe be compared?
+		if (streq(reload.path, ?)) {
+			free(gun_globals);
+			gun_globals = malloc(reload.globals_size);
+			reload.init_globals_fn(gun_globals);
 
-		gun_on_fns = reload.on_fns;
+			gun_on_fns = reload.on_fns;
 
-		if (gun) {
-			reload_entity_shape(gun, gun_definition.sprite_path);
+			if (gun) {
+				reload_entity_shape(gun, gun_definition.sprite_path);
+			}
+		} else {
+			// TODO: Implement for stuff like reloading the mass of bullets,
+			// TODO: where the mass should also start being used
+			assert(false);
 		}
 	}
 }
