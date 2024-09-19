@@ -48,6 +48,23 @@
 					"type": "f32"
 				}
 			]
+		},
+		"box": {
+			"description": "A static or dynamic box.",
+			"fields": [
+				{
+					"name": "name",
+					"type": "string"
+				},
+				{
+					"name": "sprite_path",
+					"type": "resource"
+				},
+				{
+					"name": "static",
+					"type": "bool"
+				}
+			]
 		}
 	},
 	"game_functions": {
