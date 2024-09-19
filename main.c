@@ -155,8 +155,18 @@ float game_fn_rand(float min, float max) {
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, Texture texture, char *texture_path, struct grug_file *file);
 
+static bool streq(char *a, char *b) {
+	return strcmp(a, b) == 0;
+}
+
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
 	struct grug_file *file = grug_get_entitity_file(name);
+
+	if (!streq(file->define_type, "bullet")) {
+		snprintf(message, sizeof(message), "The spawn_bullet() game function expected a bullet, but got '%s'\n", file->define_type);
+		add_message();
+		return;
+	}
 
 	file->define_fn();
 
@@ -208,10 +218,6 @@ void game_fn_define_gun(char *name, char *sprite_path, int32_t rounds_per_minute
 		.ms_per_round_fired = seconds_per_round * 1000.0,
 		.full_auto = full_auto,
 	};
-}
-
-static bool streq(char *a, char *b) {
-	return strcmp(a, b) == 0;
 }
 
 static double get_elapsed_ms(struct timespec start, struct timespec end) {
