@@ -589,7 +589,7 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 
 	// Retrying this in a loop is necessary for GIMP,
 	// since it doesn't write all bytes at once,
-	// causing the LoadTexture() after this loop to sporadically fail
+	// causing LoadTexture() to sporadically fail
 	size_t attempts = 0;
 	do {
 		entity->texture = LoadTexture(texture_path);
