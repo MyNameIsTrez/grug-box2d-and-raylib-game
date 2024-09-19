@@ -43,10 +43,6 @@ struct bullet_fields {
 	float density;
 };
 
-struct box_fields {
-	bool static_; // TODO: USE THIS!
-};
-
 struct entity {
 	int32_t id;
 	enum entity_type type;
@@ -71,7 +67,6 @@ struct entity {
 	union {
 		struct gun_fields gun;
 		struct bullet_fields bullet;
-		struct box_fields box;
 	};
 };
 
@@ -435,7 +430,6 @@ static char *copy_entity_definition_and_get_texture_path(struct entity *entity) 
 		entity->bullet.density = bullet_definition.density;
 	} else if (entity->type == OBJECT_CRATE || entity->type == OBJECT_GROUND) {
 		texture_path = box_definition.sprite_path;
-		entity->box.static_ = box_definition.static_;
 	}
 
 	return texture_path;
@@ -725,9 +719,27 @@ int main(void) {
 
 		struct grug_file **box_files = get_type_files("box");
 
-		// TODO: Stop having these indices hardcoded
-		struct grug_file *concrete_file = box_files[0];
-		struct grug_file *crate_file = box_files[1];
+		struct grug_file *concrete_file = NULL;
+		// Use the first static box
+		for (size_t i = 0; i < type_files_size; i++) {
+			box_files[i]->define_fn();
+			if (box_definition.static_) {
+				concrete_file = box_files[i];
+				break;
+			}
+		}
+		assert(concrete_file && "There must be at least one static type of box, cause we want to form a floor");
+
+		struct grug_file *crate_file = NULL;
+		// Use the first non-static box
+		for (size_t i = 0; i < type_files_size; i++) {
+			box_files[i]->define_fn();
+			if (!box_definition.static_) {
+				crate_file = box_files[i];
+				break;
+			}
+		}
+		assert(crate_file && "There must be at least one non-static type of box, cause we want to have crates that can fall down");
 
 		if (!initialized) {
 			initialized = true;
