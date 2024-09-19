@@ -585,20 +585,17 @@ static void add_message(void) {
 static void reload_entity_shape(struct entity *entity, char *texture_path) {
 	printf("Reloading entity shape %s\n", texture_path);
 
+	UnloadTexture(entity->texture);
+
 	// Retrying this in a loop is necessary for GIMP,
 	// since it doesn't write all bytes at once,
 	// causing the LoadTexture() after this loop to sporadically fail
 	size_t attempts = 0;
-	Texture new_texture;
 	do {
-		new_texture = LoadTexture(texture_path);
+		entity->texture = LoadTexture(texture_path);
 		attempts++;
-	} while (new_texture.id == 0);
+	} while (entity->texture.id == 0);
 	printf("The reloaded entity's new texture took %zu attempt%s to load succesfully\n", attempts, attempts == 1 ? "" : "s");
-
-	// TODO: Try removing new_texture, in favor of just putting it in entity->texture directly
-	UnloadTexture(entity->texture);
-	entity->texture = new_texture;
 
 	strcpy(entity->texture_path, texture_path);
 
