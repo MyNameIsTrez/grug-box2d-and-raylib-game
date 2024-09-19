@@ -2,7 +2,7 @@ define() bullet {
     return {
         .name = "PG-7VL",
         .sprite_path = "pg-7vl.png",
-        .mass = 2.6,
+        .density = 2.0,
     }
 }
 
