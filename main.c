@@ -35,6 +35,7 @@ enum entity_type {
 };
 
 struct entity {
+	int32_t id;
 	enum entity_type type;
 	b2BodyId body_id;
 	b2ShapeId shape_id;
@@ -97,9 +98,6 @@ static struct box box_definition;
 
 static struct entity *gun;
 
-static size_t gun_count;
-static size_t gun_index;
-
 static struct grug_file *type_files[MAX_TYPE_FILES];
 static size_t type_files_size;
 
@@ -115,16 +113,15 @@ static size_t messages_size;
 static size_t messages_start;
 static char message[MAX_MESSAGE_LENGTH];
 
-void on_gun_fire(void *globals, int32_t self);
+static int32_t next_entity_id;
 
 struct gun_on_fns {
-	typeof(on_gun_fire) *fire;
+	void (*fire)(void *globals, int32_t self);
 };
 
-void game_fn_play_sound(char *path) {
-	(void)path;
-	// TODO: Implement with raylib's sound playing functions
-}
+struct bullet_on_fns {
+	void (*tick)(void *globals, int32_t self);
+};
 
 static void add_message(void);
 
@@ -428,6 +425,12 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, Texture text
 
 	strcpy(entities[entities_size].texture_path, texture_path);
 
+	entities[entities_size].id = next_entity_id;
+	if (next_entity_id == INT32_MAX) {
+		next_entity_id = 0;
+	}
+	next_entity_id++;
+
 	entities_size++;
 }
 
@@ -615,6 +618,8 @@ int main(void) {
 	struct timespec previous_round_fired_time;
 	clock_gettime(CLOCK_MONOTONIC, &previous_round_fired_time);
 
+	size_t gun_index = 0;
+
 	while (!WindowShouldClose()) {
 		measurements_size = 0;
 		record("start");
@@ -661,7 +666,7 @@ int main(void) {
 		record("reloading resources");
 
 		struct grug_file *gun_file = get_type_files("gun")[gun_index];
-		gun_count = type_files_size;
+		size_t gun_count = type_files_size;
 
 		struct grug_file **box_files = get_type_files("box");
 		// TODO: Stop having these indices hardcoded
@@ -777,7 +782,18 @@ int main(void) {
 
 			struct gun_on_fns *on_fns = gun->file->on_fns;
 			if (on_fns->fire) {
-				on_fns->fire(gun->globals, 0);
+				on_fns->fire(gun->globals, gun->id);
+			}
+		}
+
+		for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
+			struct entity *entity = &entities[entity_index];
+
+			if (entity->type == OBJECT_BULLET) {
+				struct bullet_on_fns *on_fns = entity->file->on_fns;
+				if (on_fns->tick) {
+					on_fns->tick(entity->globals, entity->id);
+				}
 			}
 		}
 
