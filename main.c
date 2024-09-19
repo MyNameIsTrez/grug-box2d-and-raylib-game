@@ -117,6 +117,7 @@ static struct grug_file *type_files[MAX_TYPE_FILES];
 static size_t type_files_size;
 
 static bool debug_info = true;
+static bool draw_bounding_box = false;
 
 struct message_data {
 	char message[MAX_MESSAGE_LENGTH];
@@ -311,10 +312,11 @@ static void draw_entity(struct entity entity) {
 	float rotation = -angle * RAD2DEG;
 	DrawTexturePro(texture, source, dest, origin, rotation, WHITE);
 
-	// Draws the bounding box
-	// Rectangle rect = {pos_screen.x, pos_screen.y, texture.width * TEXTURE_SCALE, texture.height * TEXTURE_SCALE};
-	// Color color = {.r=42, .g=42, .b=242, .a=100};
-	// DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
+	if (draw_bounding_box) {
+		Rectangle rect = {pos_screen.x, pos_screen.y, texture.width * TEXTURE_SCALE, texture.height * TEXTURE_SCALE};
+		Color color = {.r=42, .g=42, .b=242, .a=100};
+		DrawRectanglePro(rect, origin, -angle * RAD2DEG, color);
+	}
 
 	drawn_entities++;
 }
@@ -772,6 +774,9 @@ int main(void) {
 
 		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
 			debug_info = !debug_info;
+		}
+		if (IsKeyPressed(KEY_B)) {
+			draw_bounding_box = !draw_bounding_box;
 		}
 		if (IsKeyPressed(KEY_P)) {
 			paused = !paused;
