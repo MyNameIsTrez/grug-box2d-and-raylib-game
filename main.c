@@ -419,13 +419,13 @@ static void play_collision_sound(b2ContactHitEvent *event) {
 	// printf("approachSpeed: %f\n", event->approachSpeed);
 
 	float x_normalized = (event->point.x * TEXTURE_SCALE) / (SCREEN_WIDTH / 2); // Between -1.0f and 1.0f
-	printf("x_normalized: %f\n", x_normalized);
+	// printf("x_normalized: %f\n", x_normalized);
 
 	float y_normalized = (event->point.y * TEXTURE_SCALE) / (SCREEN_HEIGHT / 2); // Between -1.0f and 1.0f
-	printf("y_normalized: %f\n", y_normalized);
+	// printf("y_normalized: %f\n", y_normalized);
 
 	float distance = sqrtf(x_normalized * x_normalized + y_normalized * y_normalized);
-	printf("distance: %f\n", distance);
+	// printf("distance: %f\n", distance);
 
 	float audibility = 1.0f;
 	if (distance > 0.0f) { // Prevents a later division by 0.0f
@@ -440,7 +440,7 @@ static void play_collision_sound(b2ContactHitEvent *event) {
 
 		assert(audibility >= 0.0f);
 	}
-	printf("audibility: %f\n", audibility);
+	// printf("audibility: %f\n", audibility);
 
 	Sound sound;
 	if (rand() % 2 == 0 && sound_cooldown_metal_blunt_1 == 0) {
