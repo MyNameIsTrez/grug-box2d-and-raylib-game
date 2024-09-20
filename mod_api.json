@@ -9,7 +9,8 @@
 				},
 				{
 					"name": "sprite_path",
-					"type": "resource"
+					"type": "resource",
+					"resource_extension": ".png"
 				},
 				{
 					"name": "rounds_per_minute",
@@ -41,7 +42,8 @@
 				},
 				{
 					"name": "sprite_path",
-					"type": "resource"
+					"type": "resource",
+					"resource_extension": ".png"
 				},
 				{
 					"name": "density",
@@ -69,7 +71,8 @@
 				},
 				{
 					"name": "sprite_path",
-					"type": "resource"
+					"type": "resource",
+					"resource_extension": ".png"
 				},
 				{
 					"name": "static",
@@ -159,7 +162,8 @@
 			"arguments": [
 				{
 					"name": "path",
-					"type": "string"
+					"type": "resource",
+					"resource_extension": ".wav"
 				}
 			]
 		}

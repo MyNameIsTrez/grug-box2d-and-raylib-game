@@ -147,6 +147,16 @@ struct bullet_on_fns {
 
 static void add_message(void);
 
+void game_fn_play_sound(char *path) {
+	Sound sound = LoadSound(path);
+	assert(sound.frameCount > 0);
+
+	PlaySound(sound);
+
+	// TODO: This doesn't work here, since it frees the sound before it gets played
+	// UnloadSound(sound);
+}
+
 void game_fn_print_bool(bool b) {
 	snprintf(message, sizeof(message), "%s\n", b ? "true" : "false");
 	add_message();
@@ -744,7 +754,9 @@ int main(void) {
 	InitAudioDevice();
 
 	metal_blunt_1 = LoadSound("MetalBlunt1.wav");
+	assert(metal_blunt_1.frameCount > 0);
 	metal_blunt_2 = LoadSound("MetalBlunt2.wav");
+	assert(metal_blunt_2.frameCount > 0);
 
 	bool paused = false;
 

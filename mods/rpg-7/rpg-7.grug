@@ -9,5 +9,6 @@ define() gun {
 
 on_fire(self: i32) {
     print_string("RPG-7")
+    play_sound("sweetener_fire1.wav")
     spawn_bullet("pg-7vl", 0.0, 0.0, 0.0, 100.0)
 }
