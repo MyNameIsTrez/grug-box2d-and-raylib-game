@@ -131,6 +131,12 @@ static char message[MAX_MESSAGE_LENGTH];
 
 static int32_t next_entity_id;
 
+static Sound metal_blunt_1;
+static Sound metal_blunt_2;
+
+static size_t sound_cooldown_metal_blunt_1;
+static size_t sound_cooldown_metal_blunt_2;
+
 struct gun_on_fns {
 	void (*fire)(void *globals, int32_t self);
 };
@@ -409,6 +415,74 @@ static void remove_entity(size_t entity_index) {
 	}
 }
 
+static void play_collision_sound(b2ContactHitEvent *event) {
+	// printf("approachSpeed: %f\n", event->approachSpeed);
+
+	float x_normalized = (event->point.x * TEXTURE_SCALE) / (SCREEN_WIDTH / 2); // Between -1.0f and 1.0f
+	printf("x_normalized: %f\n", x_normalized);
+
+	float y_normalized = (event->point.y * TEXTURE_SCALE) / (SCREEN_HEIGHT / 2); // Between -1.0f and 1.0f
+	printf("y_normalized: %f\n", y_normalized);
+
+	float distance = sqrtf(x_normalized * x_normalized + y_normalized * y_normalized);
+	printf("distance: %f\n", distance);
+
+	float audibility = 1.0f;
+	if (distance > 0.0f) { // Prevents a later division by 0.0f
+		distance *= 5.0f;
+
+		// This considers the game to be a 3D space
+		// See https://en.wikipedia.org/wiki/Inverse-square_law
+		audibility = 1.0f / (distance * distance); // Between 0.0f and 1.0f
+
+		// This considers the game to be a 2D space
+		// audibility = 1.0f / distance; // Between 0.0f and 1.0f
+
+		assert(audibility >= 0.0f);
+	}
+	printf("audibility: %f\n", audibility);
+
+	Sound sound;
+	if (rand() % 2 == 0 && sound_cooldown_metal_blunt_1 == 0) {
+		sound = metal_blunt_1;
+		sound_cooldown_metal_blunt_1 = 6;
+		// sound_volume_metal_blunt_1 = ;
+	} else if (sound_cooldown_metal_blunt_2 == 0) {
+		sound = metal_blunt_2;
+		sound_cooldown_metal_blunt_2 = 6;
+		// sound_volume_metal_blunt_2 = ;
+	} else {
+		return;
+	}
+
+	float volume = event->approachSpeed * 0.01f;
+
+	volume *= audibility;
+
+	if (volume > 1.0f) {
+		volume = 1.0f;
+	}
+	SetSoundVolume(sound, volume);
+
+	float speed = event->approachSpeed * 0.005f;
+	// printf("speed: %f\n", speed);
+	float min_pitch = 0.5f;
+	float max_pitch = 1.5f;
+	float pitch = min_pitch + speed;
+	// printf("pitch: %f\n", pitch);
+	if (pitch > max_pitch) {
+		pitch = max_pitch;
+	}
+	SetSoundPitch(sound, pitch);
+
+	float x_normalized_inverted = -x_normalized; // Because a pan of 1.0f means all the way left, instead of right
+	float pan = 0.5f + x_normalized_inverted / 2.0f; // Between 0.0f and 1.0f
+	// printf("pan: %f\n", pan);
+	SetSoundPan(sound, pan);
+
+	PlaySound(sound);
+}
+
 static b2ShapeId add_shape(b2BodyId body_id, Texture texture, bool enable_hit_events, float density) {
 	b2ShapeDef shape_def = b2DefaultShapeDef();
 
@@ -665,10 +739,8 @@ int main(void) {
 
 	InitAudioDevice();
 
-	Sound metal_blunt_1 = LoadSound("MetalBlunt1.wav");
-	size_t sound_cooldown_metal_blunt_1 = 0;
-	Sound metal_blunt_2 = LoadSound("MetalBlunt2.wav");
-	size_t sound_cooldown_metal_blunt_2 = 0;
+	metal_blunt_1 = LoadSound("MetalBlunt1.wav");
+	metal_blunt_2 = LoadSound("MetalBlunt2.wav");
 
 	bool paused = false;
 
@@ -829,74 +901,8 @@ int main(void) {
 			b2ContactEvents contactEvents = b2World_GetContactEvents(world_id);
 			for (int32_t i = 0; i < contactEvents.hitCount; i++) {
 				b2ContactHitEvent *event = &contactEvents.hitEvents[i];
-
-				// printf("Hit event!\n");
-
-				// printf("approachSpeed: %f\n", event->approachSpeed);
-
-				float x_normalized = (event->point.x * TEXTURE_SCALE) / (SCREEN_WIDTH / 2); // Between -1.0f and 1.0f
-				printf("x_normalized: %f\n", x_normalized);
-
-				float y_normalized = (event->point.y * TEXTURE_SCALE) / (SCREEN_HEIGHT / 2); // Between -1.0f and 1.0f
-				printf("y_normalized: %f\n", y_normalized);
-
-				float distance = sqrtf(x_normalized * x_normalized + y_normalized * y_normalized);
-				printf("distance: %f\n", distance);
-
-				float audibility = 1.0f;
-				if (distance > 0.0f) { // Prevents a later division by 0.0f
-					distance *= 5.0f;
-
-					// This considers the game to be a 3D space
-					// See https://en.wikipedia.org/wiki/Inverse-square_law
-					audibility = 1.0f / (distance * distance); // Between 0.0f and 1.0f
-
-					// This considers the game to be a 2D space
-					// audibility = 1.0f / distance; // Between 0.0f and 1.0f
-
-					assert(audibility >= 0.0f);
-				}
-				printf("audibility: %f\n", audibility);
-
-				Sound sound;
-				if (rand() % 2 == 0 && sound_cooldown_metal_blunt_1 == 0) {
-					sound = metal_blunt_1;
-					sound_cooldown_metal_blunt_1 = 6;
-					// sound_volume_metal_blunt_1 = ;
-				} else if (sound_cooldown_metal_blunt_2 == 0) {
-					sound = metal_blunt_2;
-					sound_cooldown_metal_blunt_2 = 6;
-					// sound_volume_metal_blunt_2 = ;
-				} else {
-					continue;
-				}
-
-				float volume = event->approachSpeed * 0.01f;
-
-				volume *= audibility;
-
-				if (volume > 1.0f) {
-					volume = 1.0f;
-				}
-				SetSoundVolume(sound, volume);
-
-				float speed = event->approachSpeed * 0.005f;
-				// printf("speed: %f\n", speed);
-				float min_pitch = 0.5f;
-				float max_pitch = 1.5f;
-				float pitch = min_pitch + speed;
-				// printf("pitch: %f\n", pitch);
-				if (pitch > max_pitch) {
-					pitch = max_pitch;
-				}
-				SetSoundPitch(sound, pitch);
-
-				float x_normalized_inverted = -x_normalized; // Because a pan of 1.0f means all the way left, instead of right
-				float pan = 0.5f + x_normalized_inverted / 2.0f; // Between 0.0f and 1.0f
-				// printf("pan: %f\n", pan);
-				SetSoundPan(sound, pan);
-
-				PlaySound(sound);
+				printf("Hit event!\n");
+				play_collision_sound(event);
 			}
 			record("collision handling");
 
