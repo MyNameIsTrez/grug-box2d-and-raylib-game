@@ -442,6 +442,17 @@ static void play_collision_sound(b2ContactHitEvent *event) {
 	}
 	// printf("audibility: %f\n", audibility);
 
+	float volume = event->approachSpeed * 0.01f;
+
+	volume *= audibility;
+
+	if (volume > 1.0f) {
+		volume = 1.0f;
+	}
+	if (volume < 0.01f) {
+		return;
+	}
+
 	Sound sound;
 	if (rand() % 2 == 0 && sound_cooldown_metal_blunt_1 == 0) {
 		sound = metal_blunt_1;
@@ -455,13 +466,6 @@ static void play_collision_sound(b2ContactHitEvent *event) {
 		return;
 	}
 
-	float volume = event->approachSpeed * 0.01f;
-
-	volume *= audibility;
-
-	if (volume > 1.0f) {
-		volume = 1.0f;
-	}
 	SetSoundVolume(sound, volume);
 
 	float speed = event->approachSpeed * 0.005f;
