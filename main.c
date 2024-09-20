@@ -662,6 +662,11 @@ int main(void) {
 	background_texture = LoadTexture("background.png");
 	assert(background_texture.id > 0);
 
+	InitAudioDevice();
+
+	Sound metal_blunt_1 = LoadSound("MetalBlunt1.wav");
+	Sound metal_blunt_2 = LoadSound("MetalBlunt2.wav");
+
 	bool paused = false;
 
 	bool initialized = false;
@@ -812,6 +817,15 @@ int main(void) {
 			}
 			record("getting body events");
 
+			b2ContactEvents contactEvents = b2World_GetContactEvents(world_id);
+			for (int32_t i = 0; i < contactEvents.hitCount; i++) {
+				b2ContactHitEvent *event = &contactEvents.hitEvents[i];
+				if (event->approachSpeed > 100.0f) {
+					PlaySound(rand() % 2 == 0 ? metal_blunt_1 : metal_blunt_2);
+				}
+			}
+			record("collision handling");
+
 			// This is O(n), but should be fast enough in practice
 			for (size_t i = entities_size; i > 0; i--) {
 				if (removed_entities[i - 1]) {
@@ -866,7 +880,8 @@ int main(void) {
 	for (size_t i = 0; i < entities_size; i++) {
 		UnloadTexture(entities[i].texture);
 	}
-
-	// TODO: Is this necessary?
+	UnloadSound(metal_blunt_1);
+	UnloadSound(metal_blunt_2);
+	CloseAudioDevice();
 	CloseWindow();
 }
