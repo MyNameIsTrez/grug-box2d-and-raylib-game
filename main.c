@@ -830,7 +830,33 @@ int main(void) {
 			for (int32_t i = 0; i < contactEvents.hitCount; i++) {
 				b2ContactHitEvent *event = &contactEvents.hitEvents[i];
 
-				printf("Hit event!\n");
+				// printf("Hit event!\n");
+
+				// printf("approachSpeed: %f\n", event->approachSpeed);
+
+				float x_normalized = (event->point.x * TEXTURE_SCALE) / (SCREEN_WIDTH / 2); // Between -1.0f and 1.0f
+				printf("x_normalized: %f\n", x_normalized);
+
+				float y_normalized = (event->point.y * TEXTURE_SCALE) / (SCREEN_HEIGHT / 2); // Between -1.0f and 1.0f
+				printf("y_normalized: %f\n", y_normalized);
+
+				float distance = sqrtf(x_normalized * x_normalized + y_normalized * y_normalized);
+				printf("distance: %f\n", distance);
+
+				float audibility = 1.0f;
+				if (distance > 0.0f) { // Prevents a later division by 0.0f
+					distance *= 5.0f;
+
+					// This considers the game to be a 3D space
+					// See https://en.wikipedia.org/wiki/Inverse-square_law
+					audibility = 1.0f / (distance * distance); // Between 0.0f and 1.0f
+
+					// This considers the game to be a 2D space
+					// audibility = 1.0f / distance; // Between 0.0f and 1.0f
+
+					assert(audibility >= 0.0f);
+				}
+				printf("audibility: %f\n", audibility);
 
 				Sound sound;
 				if (rand() % 2 == 0 && sound_cooldown_metal_blunt_1 == 0) {
@@ -845,9 +871,10 @@ int main(void) {
 					continue;
 				}
 
-				// printf("approachSpeed: %f\n", event->approachSpeed);
-
 				float volume = event->approachSpeed * 0.01f;
+
+				volume *= audibility;
+
 				if (volume > 1.0f) {
 					volume = 1.0f;
 				}
@@ -864,11 +891,8 @@ int main(void) {
 				}
 				SetSoundPitch(sound, pitch);
 
-				float x = event->point.x * TEXTURE_SCALE;
-				float x_normalized = x / (SCREEN_WIDTH / 2); // Between -1.0f and 1.0f
-				// printf("x_normalized: %f\n", x_normalized);
-				x_normalized = -x_normalized; // Because a pan of 1.0f means all the way left, instead of right
-				float pan = 0.5f + x_normalized / 2.0f; // Between 0.0f and 1.0f
+				float x_normalized_inverted = -x_normalized; // Because a pan of 1.0f means all the way left, instead of right
+				float pan = 0.5f + x_normalized_inverted / 2.0f; // Between 0.0f and 1.0f
 				// printf("pan: %f\n", pan);
 				SetSoundPan(sound, pan);
 
