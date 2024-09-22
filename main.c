@@ -1,5 +1,5 @@
-// Solely so stupid VS Code can find "CLOCK_PROCESS_CPUTIME_ID"
-#define _POSIX_C_SOURCE 199309L
+// So VS Code can find "CLOCK_PROCESS_CPUTIME_ID", and so we can use strdup()
+#define _POSIX_C_SOURCE 200809L
 
 #include "box2d/box2d.h"
 #include "grug.h"
@@ -26,16 +26,21 @@
 #define ERROR_MESSAGE_DURATION_MS 5000
 #define ERROR_MESSAGE_FADING_MOMENT_MS 4000
 #define NANOSECONDS_PER_SECOND 1000000000L
+#define MAX_I32_MAP_ENTRIES 420
+
+typedef int32_t i32;
+typedef uint32_t u32;
 
 enum entity_type {
 	OBJECT_GUN,
 	OBJECT_BULLET,
 	OBJECT_GROUND,
 	OBJECT_CRATE,
+	OBJECT_COUNTER,
 };
 
 struct gun_fields {
-	int32_t ms_per_round_fired;
+	i32 ms_per_round_fired;
 	bool full_auto;
 };
 
@@ -43,18 +48,27 @@ struct bullet_fields {
 	float density;
 };
 
+struct i32_map {
+	char *keys[MAX_I32_MAP_ENTRIES];
+	i32 values[MAX_I32_MAP_ENTRIES];
+
+	u32 buckets[MAX_I32_MAP_ENTRIES];
+	u32 chains[MAX_I32_MAP_ENTRIES];
+
+	size_t size;
+};
+
 struct entity {
-	int32_t id;
+	i32 id;
 	enum entity_type type;
 	b2BodyId body_id;
 	b2ShapeId shape_id;
 	Texture texture;
 
-	// This being an array instead of a ptr is necessary for taking ownership
-	// Ownership is needed, because grug_resource_reloads[] contains texture paths
+	// This has ownership, because grug_resource_reloads[] contains texture paths
 	// that start dangling the moment the .so is unloaded
 	// There is no way for `streq(entity->texture_path, reload.path)` to work without ownership
-	char texture_path[4096];
+	char *texture_path;
 
 	void *dll;
 
@@ -63,6 +77,8 @@ struct entity {
 
 	bool flippable;
 	bool enable_hit_events;
+
+	struct i32_map *i32_map;
 
 	union {
 		struct gun_fields gun;
@@ -73,8 +89,9 @@ struct entity {
 struct gun {
 	char *name;
 	char *sprite_path;
-	int32_t ms_per_round_fired;
+	i32 ms_per_round_fired;
 	bool full_auto;
+	char *companion;
 };
 
 struct bullet {
@@ -87,6 +104,10 @@ struct box {
 	char *name;
 	char *sprite_path;
 	bool static_;
+};
+
+struct counter {
+	char *name;
 };
 
 static struct entity entities[MAX_ENTITIES];
@@ -110,6 +131,7 @@ static size_t measurements_size;
 static struct gun gun_definition;
 static struct bullet bullet_definition;
 static struct box box_definition;
+static struct counter counter_definition;
 
 static struct entity *gun;
 
@@ -129,7 +151,7 @@ static size_t messages_size;
 static size_t messages_start;
 static char message[MAX_MESSAGE_LENGTH];
 
-static int32_t next_entity_id;
+static i32 next_entity_id;
 
 static Sound metal_blunt_1;
 static Sound metal_blunt_2;
@@ -137,15 +159,183 @@ static Sound metal_blunt_2;
 static size_t sound_cooldown_metal_blunt_1;
 static size_t sound_cooldown_metal_blunt_2;
 
+static bool paused = false;
+
 struct gun_on_fns {
-	void (*fire)(void *globals, int32_t self);
+	void (*spawn)(void *globals, i32 self);
+	void (*despawn)(void *globals, i32 self);
+	void (*fire)(void *globals, i32 self);
 };
 
 struct bullet_on_fns {
-	void (*tick)(void *globals, int32_t self);
+	void (*tick)(void *globals, i32 self);
+};
+
+struct counter_on_fns {
+	void (*tick)(void *globals, i32 self);
 };
 
 static void add_message(void);
+static void despawn_entity(size_t entity_index);
+static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events);
+
+// TODO: Optimize this to O(1), by adding an array that maps
+// TODO: the entity ID to the entities[] index
+static size_t get_entity_index_from_entity_id(i32 id) {
+	for (size_t i = 0; i < entities_size; i++) {
+		if (entities[i].id == id) {
+			return i;
+		}
+	}
+
+	snprintf(message, sizeof(message), "Failed to find the entity with ID %d\n", id);
+	add_message();
+
+	return SIZE_MAX;
+}
+
+// From https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=bfd/elf.c#l193
+static u32 elf_hash(const char *namearg) {
+	u32 h = 0;
+
+	for (const unsigned char *name = (const unsigned char *) namearg; *name; name++) {
+		h = (h << 4) + *name;
+		h ^= (h >> 24) & 0xf0;
+	}
+
+	return h & 0x0fffffff;
+}
+
+static bool streq(char *a, char *b) {
+	return strcmp(a, b) == 0;
+}
+
+void game_fn_map_set_i32(i32 id, char *key, i32 value) {
+	size_t entity_index = get_entity_index_from_entity_id(id);
+	if (entity_index == SIZE_MAX) {
+		return;
+	}
+
+	struct i32_map *map = entities[entity_index].i32_map;
+
+	u32 bucket_index = elf_hash(key) % MAX_I32_MAP_ENTRIES;
+
+	u32 i = map->buckets[bucket_index];
+
+	while (true) {
+		if (i == UINT32_MAX) {
+			break;
+		}
+
+		if (streq(key, map->keys[i])) {
+			break;
+		}
+
+		i = map->chains[i];
+	}
+
+	if (i == UINT32_MAX) {
+		if (map->size >= MAX_I32_MAP_ENTRIES) {
+			snprintf(message, sizeof(message), "The i32 map of the entity with ID %d has %d entries, which exceeds MAX_I32_MAP_ENTRIES\n", id, MAX_I32_MAP_ENTRIES);
+			add_message();
+
+			return;
+		}
+
+		i = map->size;
+
+		map->keys[i] = strdup(key);
+		map->values[i] = value;
+		map->chains[i] = map->buckets[bucket_index];
+		map->buckets[bucket_index] = i;
+
+		map->size++;
+	} else {
+		free(map->keys[i]);
+		map->keys[i] = strdup(key);
+		map->values[i] = value;
+	}
+}
+
+i32 game_fn_map_get_i32(i32 id, char *key) {
+	size_t entity_index = get_entity_index_from_entity_id(id);
+	if (entity_index == SIZE_MAX) {
+		return -1;
+	}
+
+	struct i32_map *map = entities[entity_index].i32_map;
+
+	if (map->size == 0) {
+		snprintf(message, sizeof(message), "The i32 map of the entity with ID %d is empty, so can't contain the key '%s'\n", id, key);
+		add_message();
+
+		return -1;
+	}
+
+	u32 i = map->buckets[elf_hash(key) % MAX_I32_MAP_ENTRIES];
+
+	while (true) {
+		if (i == UINT32_MAX) {
+			snprintf(message, sizeof(message), "The i32 map of the entity with ID %d doesn't contain the key '%s'\n", id, key);
+			add_message();
+
+			break;
+		}
+
+		if (streq(key, map->keys[i])) {
+			return map->values[i];
+		}
+
+		i = map->chains[i];
+	}
+
+	return -1;
+}
+
+bool game_fn_map_has_i32(i32 id, char *key) {
+	size_t entity_index = get_entity_index_from_entity_id(id);
+	if (entity_index == SIZE_MAX) {
+		return false;
+	}
+
+	struct i32_map *map = entities[entity_index].i32_map;
+
+	if (map->size == 0) {
+		return false;
+	}
+
+	u32 i = map->buckets[elf_hash(key) % MAX_I32_MAP_ENTRIES];
+
+	while (true) {
+		if (i == UINT32_MAX) {
+			break;
+		}
+
+		if (streq(key, map->keys[i])) {
+			return true;
+		}
+
+		i = map->chains[i];
+	}
+
+	return false;
+}
+
+void game_fn_despawn_entity(i32 id) {
+	size_t entity_index = get_entity_index_from_entity_id(id);
+
+	if (entity_index != SIZE_MAX) {
+		despawn_entity(entity_index);
+	}
+}
+
+i32 game_fn_spawn_counter(char *name) {
+	b2BodyDef body_def = {0};
+
+	struct grug_file *file = grug_get_entity_file(name);
+
+	return spawn_entity(body_def, OBJECT_COUNTER, file, false, false);
+}
 
 void game_fn_play_sound(char *path) {
 	Sound sound = LoadSound(path);
@@ -172,7 +362,7 @@ void game_fn_print_f32(float f) {
 	add_message();
 }
 
-void game_fn_print_i32(int32_t i) {
+void game_fn_print_i32(i32 i) {
 	snprintf(message, sizeof(message), "%d\n", i);
 	add_message();
 }
@@ -184,18 +374,8 @@ float game_fn_rand(float min, float max) {
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, struct grug_file *file);
 
-static bool streq(char *a, char *b) {
-	return strcmp(a, b) == 0;
-}
-
 void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, float velocity_in_meters_per_second) {
 	struct grug_file *file = grug_get_entity_file(name);
-
-	if (!streq(file->define_type, "bullet")) {
-		snprintf(message, sizeof(message), "The spawn_bullet() game function expected a bullet, but got '%s'\n", file->define_type);
-		add_message();
-		return;
-	}
 
 	file->define_fn();
 
@@ -222,6 +402,12 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, 
 	spawn_bullet(muzzle_pos, gun_angle, velocity, file);
 }
 
+void game_fn_define_counter(char *name) {
+	counter_definition = (struct counter){
+		.name = name,
+	};
+}
+
 void game_fn_define_box(char *name, char *sprite_path, bool static_) {
 	box_definition = (struct box){
 		.name = name,
@@ -238,7 +424,7 @@ void game_fn_define_bullet(char *name, char *sprite_path, float density) {
 	};
 }
 
-void game_fn_define_gun(char *name, char *sprite_path, int32_t rounds_per_minute, bool full_auto) {
+void game_fn_define_gun(char *name, char *sprite_path, i32 rounds_per_minute, bool full_auto, char *companion) {
 	double rounds_per_second = rounds_per_minute / 60.0;
 	double seconds_per_round = 1.0 / rounds_per_second;
 
@@ -247,6 +433,7 @@ void game_fn_define_gun(char *name, char *sprite_path, int32_t rounds_per_minute
 		.sprite_path = sprite_path,
 		.ms_per_round_fired = seconds_per_round * 1000.0,
 		.full_auto = full_auto,
+		.companion = companion,
 	};
 }
 
@@ -353,7 +540,11 @@ static void draw(void) {
 
 	drawn_entities = 0;
 	for (size_t i = 0; i < entities_size; i++) {
-		draw_entity(entities[i]);
+		struct entity entity = entities[i];
+
+		if (entity.texture.id > 0) {
+			draw_entity(entity);
+		}
 	}
 	record("drawing entities");
 
@@ -407,10 +598,20 @@ static void draw(void) {
 	EndDrawing();
 }
 
-static void remove_entity(size_t entity_index) {
-	b2DestroyBody(entities[entity_index].body_id);
+static void despawn_entity(size_t entity_index) {
+	if (entities[entity_index].texture.id > 0) {
+		UnloadTexture(entities[entity_index].texture);
 
-	UnloadTexture(entities[entity_index].texture);
+		free(entities[entity_index].texture_path);
+
+		b2DestroyBody(entities[entity_index].body_id);
+	}
+
+	struct i32_map *map = entities[entity_index].i32_map;
+	for (size_t i = 0; i < map->size; i++) {
+		free(map->keys[i]);
+	}
+	free(map);
 
 	entities[entity_index] = entities[--entities_size];
 
@@ -420,7 +621,7 @@ static void remove_entity(size_t entity_index) {
 
 	// If the removed entity wasn't at the very end of the entities array,
 	// update entity_index's userdata
-	if (entity_index < entities_size) {
+	if (entity_index < entities_size && entities[entity_index].texture.id > 0) {
 		b2Body_SetUserData(entities[entity_index].body_id, (void *)entity_index);
 	}
 }
@@ -508,31 +709,49 @@ static b2ShapeId add_shape(b2BodyId body_id, Texture texture, bool enable_hit_ev
 	return b2CreatePolygonShape(body_id, &shape_def, &polygon);
 }
 
-static char *copy_entity_definition_and_get_texture_path(struct entity *entity) {
-	char *texture_path;
-
-	if (entity->type == OBJECT_GUN) {
-		texture_path = gun_definition.sprite_path;
-		entity->gun.ms_per_round_fired = gun_definition.ms_per_round_fired;
-		entity->gun.full_auto = gun_definition.full_auto;
-	} else if (entity->type == OBJECT_BULLET) {
-		texture_path = bullet_definition.sprite_path;
-		entity->bullet.density = bullet_definition.density;
-	} else if (entity->type == OBJECT_CRATE || entity->type == OBJECT_GROUND) {
-		texture_path = box_definition.sprite_path;
+static char *get_texture_path(struct entity *entity) {
+	switch (entity->type) {
+		case OBJECT_GUN:
+			return gun_definition.sprite_path;
+		case OBJECT_BULLET:
+			return bullet_definition.sprite_path;
+		case OBJECT_GROUND:
+		case OBJECT_CRATE:
+			return box_definition.sprite_path;
+		case OBJECT_COUNTER:
+			break;
 	}
-
-	return texture_path;
+	return NULL;
 }
 
-static void spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events) {
+static void copy_entity_definition(struct entity *entity) {
+	switch (entity->type) {
+		case OBJECT_GUN:
+			entity->gun.ms_per_round_fired = gun_definition.ms_per_round_fired;
+			entity->gun.full_auto = gun_definition.full_auto;
+			break;
+		case OBJECT_BULLET:
+			entity->bullet.density = bullet_definition.density;
+			break;
+		case OBJECT_GROUND:
+		case OBJECT_CRATE:
+			break;
+		case OBJECT_COUNTER:
+			break;
+	}
+}
+
+static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events) {
 	if (entities_size >= MAX_ENTITIES) {
-		return;
+		snprintf(message, sizeof(message), "Won't spawn entity, as there are already %d entities, exceeding MAX_ENTITIES\n", MAX_ENTITIES);
+		add_message();
+
+		return -1;
 	}
 
-	body_def.userData = (void *)entities_size;
-
 	struct entity *entity = &entities[entities_size];
+
+	*entity = (struct entity){0};
 
 	entity->dll = file->dll;
 
@@ -541,24 +760,35 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_
 
 	entity->on_fns = file->on_fns;
 
-	entity->body_id = b2CreateBody(world_id, &body_def);
-
 	entity->type = type;
-
-	entity->flippable = flippable;
-
-	entity->enable_hit_events = enable_hit_events;
 
 	file->define_fn();
 
-	char *texture_path = copy_entity_definition_and_get_texture_path(entity);
+	copy_entity_definition(entity);
 
-	entity->texture = LoadTexture(texture_path);
-	assert(entity->texture.id > 0);
+	char *texture_path = get_texture_path(entity);
 
-	strcpy(entity->texture_path, texture_path);
+	// The "counter" entity has no box2d body, nor texture
+	if (texture_path) {
+		body_def.userData = (void *)entities_size;
 
-	entity->shape_id = add_shape(entity->body_id, entity->texture, enable_hit_events, type == OBJECT_BULLET ? entity->bullet.density : 1.0f);
+		entity->body_id = b2CreateBody(world_id, &body_def);
+
+		entity->flippable = flippable;
+
+		entity->enable_hit_events = enable_hit_events;
+
+		entity->texture = LoadTexture(texture_path);
+		assert(entity->texture.id > 0);
+
+		entity->texture_path = strdup(texture_path);
+
+		entity->shape_id = add_shape(entity->body_id, entity->texture, enable_hit_events, type == OBJECT_BULLET ? entity->bullet.density : 1.0f);
+	}
+
+	entity->i32_map = malloc(sizeof(*entity->i32_map));
+	memset(entity->i32_map->buckets, 0xff, MAX_I32_MAP_ENTRIES * sizeof(u32));
+	entity->i32_map->size = 0;
 
 	entity->id = next_entity_id;
 	if (entity->id == INT32_MAX) {
@@ -568,6 +798,8 @@ static void spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_
 	}
 
 	entities_size++;
+
+	return entity->id;
 }
 
 static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, struct grug_file *file) {
@@ -580,13 +812,31 @@ static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, struct grug_f
 	spawn_entity(body_def, OBJECT_BULLET, file, false, true);
 }
 
+static void spawn_companion(char *name) {
+	struct grug_file *file = grug_get_entity_file(name);
+
+	file->define_fn();
+
+	b2BodyDef body_def = b2DefaultBodyDef();
+	if (!box_definition.static_) {
+		body_def.type = b2_dynamicBody;
+	}
+	body_def.position = (b2Vec2){ 50.0f, 100.0f };
+
+	spawn_entity(body_def, OBJECT_CRATE, file, false, true);
+}
+
 static struct entity *spawn_gun(struct grug_file *file, b2Vec2 pos) {
 	b2BodyDef body_def = b2DefaultBodyDef();
 	body_def.position = pos;
 
+	struct entity *gun_entity = entities + entities_size;
 	spawn_entity(body_def, OBJECT_GUN, file, true, false);
 
-	return entities + entities_size - 1;
+	file->define_fn();
+	spawn_companion(gun_definition.companion);
+
+	return gun_entity;
 }
 
 static void spawn_crates(struct grug_file *file) {
@@ -681,7 +931,8 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 	} while (entity->texture.id == 0);
 	printf("The reloaded entity's new texture took %zu attempt%s to load succesfully\n", attempts, attempts == 1 ? "" : "s");
 
-	strcpy(entity->texture_path, texture_path);
+	free(entity->texture_path);
+	entity->texture_path = strdup(texture_path);
 
 	b2DestroyShape(entity->shape_id);
 	entity->shape_id = add_shape(entity->body_id, entity->texture, entity->enable_hit_events, entity->type == OBJECT_BULLET ? entity->bullet.density : 1.0f);
@@ -698,9 +949,30 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 
 	file->define_fn();
 
-	char *texture_path = copy_entity_definition_and_get_texture_path(entity);
+	copy_entity_definition(entity);
 
-	reload_entity_shape(entity, texture_path);
+	char *texture_path = get_texture_path(entity);
+
+	if (texture_path) {
+		reload_entity_shape(entity, texture_path);
+	}
+}
+
+static void reload_gun(struct grug_file *gun_file) {
+	struct gun_on_fns *on_fns = gun->on_fns;
+	if (on_fns->despawn) {
+		on_fns->despawn(gun->globals, gun->id);
+	}
+
+	reload_entity(gun, gun_file);
+
+	gun_file->define_fn();
+	spawn_companion(gun_definition.companion);
+
+	on_fns = gun->on_fns; // This is necessary due to the reload_entity() call
+	if (on_fns->spawn) {
+		on_fns->spawn(gun->globals, gun->id);
+	}
 }
 
 static void reload_modified_grug_resources(void) {
@@ -712,7 +984,7 @@ static void reload_modified_grug_resources(void) {
 		for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
 			struct entity *entity = &entities[entity_index];
 
-			if (streq(entity->texture_path, reload.path)) {
+			if (entity->texture_path && streq(entity->texture_path, reload.path)) {
 				reload_entity_shape(entity, reload.path);
 			}
 		}
@@ -733,6 +1005,223 @@ static void reload_modified_grug_entities(void) {
 			}
 		}
 	}
+}
+
+static void update(struct timespec *previous_round_fired_time) {
+	measurements_size = 0;
+	record("start");
+
+	if (grug_mod_had_runtime_error()) {
+		snprintf(message, sizeof(message), "Runtime error: %s\n", grug_get_runtime_error_reason());
+		add_message();
+		snprintf(message, sizeof(message), "Error occurred when the game called %s(), from %s\n", grug_on_fn_name, grug_on_fn_path);
+		add_message();
+
+		draw();
+
+		// struct timespec req = {
+		// 	.tv_sec = 0,
+		// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
+		// };
+		// nanosleep(&req, NULL);
+
+		return;
+	}
+	record("checking for runtime error");
+
+	if (grug_regenerate_modified_mods()) {
+		// snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
+		snprintf(message, sizeof(message), "Loading error: %s:%d: %s (grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
+		add_message();
+
+		draw();
+
+		// struct timespec req = {
+		// 	.tv_sec = 0,
+		// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
+		// };
+		// nanosleep(&req, NULL);
+
+		return;
+	}
+	record("mod regeneration");
+
+	reload_modified_grug_entities();
+	record("reloading entities");
+
+	reload_modified_grug_resources();
+	record("reloading resources");
+
+	static size_t gun_index = 0;
+
+	struct grug_file *gun_file = get_type_files("gun")[gun_index];
+	size_t gun_count = type_files_size;
+
+	struct grug_file **box_files = get_type_files("box");
+
+	struct grug_file *concrete_file = NULL;
+	// Use the first static box
+	for (size_t i = 0; i < type_files_size; i++) {
+		box_files[i]->define_fn();
+		if (box_definition.static_) {
+			concrete_file = box_files[i];
+			break;
+		}
+	}
+	assert(concrete_file && "There must be at least one static type of box, cause we want to form a floor");
+
+	struct grug_file *crate_file = NULL;
+	// Use the first non-static box
+	for (size_t i = 0; i < type_files_size; i++) {
+		box_files[i]->define_fn();
+		if (!box_definition.static_) {
+			crate_file = box_files[i];
+			break;
+		}
+	}
+	assert(crate_file && "There must be at least one non-static type of box, cause we want to have crates that can fall down");
+
+	static bool initialized = false;
+	if (!initialized) {
+		initialized = true;
+
+		b2Vec2 pos = { 100.0f, 0 };
+
+		gun = spawn_gun(gun_file, pos);
+
+		free(gun->globals);
+		gun->globals = malloc(gun_file->globals_size);
+		gun_file->init_globals_fn(gun->globals);
+
+		struct gun_on_fns *on_fns = gun->on_fns;
+		if (on_fns->spawn) {
+			on_fns->spawn(gun->globals, gun->id);
+		}
+
+		spawn_ground(concrete_file);
+		spawn_crates(crate_file);
+	}
+
+	float mouse_movement = GetMouseWheelMove();
+	if (mouse_movement > 0) {
+		gun_index++;
+		gun_index %= gun_count;
+		gun_file = get_type_files("gun")[gun_index];
+		reload_gun(gun_file);
+	}
+	if (mouse_movement < 0) {
+		gun_index--;
+		gun_index %= gun_count;
+		gun_file = get_type_files("gun")[gun_index];
+		reload_gun(gun_file);
+	}
+
+	if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
+		debug_info = !debug_info;
+	}
+	if (IsKeyPressed(KEY_B)) {
+		draw_bounding_box = !draw_bounding_box;
+	}
+	if (IsKeyPressed(KEY_P)) {
+		paused = !paused;
+	}
+	if (IsKeyPressed(KEY_S)) {
+		spawn_crates(crate_file);
+	}
+	if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
+		for (size_t i = entities_size; i > 0; i--) {
+			enum entity_type type = entities[i - 1].type;
+			if (type == OBJECT_BULLET || type == OBJECT_CRATE) {
+				despawn_entity(i - 1);
+			}
+		}
+	}
+
+	if (!paused) {
+		float deltaTime = GetFrameTime();
+		b2World_Step(world_id, deltaTime, 4);
+		record("world step");
+
+		static bool out_of_bounds_entities[MAX_ENTITIES];
+		memset(out_of_bounds_entities, false, sizeof(out_of_bounds_entities));
+		record("clearing out_of_bounds_entities");
+
+		b2BodyEvents events = b2World_GetBodyEvents(world_id);
+		for (i32 i = 0; i < events.moveCount; i++) {
+			b2BodyMoveEvent *event = events.moveEvents + i;
+			// Remove entities that end up below the screen
+			if (event->transform.p.y < -SCREEN_HEIGHT / 2.0f / TEXTURE_SCALE - 100.0f) {
+				out_of_bounds_entities[(size_t)event->userData] = true;
+			}
+		}
+		record("getting body events");
+
+		if (sound_cooldown_metal_blunt_1 > 0) {
+			sound_cooldown_metal_blunt_1--;
+		}
+		if (sound_cooldown_metal_blunt_2 > 0) {
+			sound_cooldown_metal_blunt_2--;
+		}
+		b2ContactEvents contactEvents = b2World_GetContactEvents(world_id);
+		for (i32 i = 0; i < contactEvents.hitCount; i++) {
+			b2ContactHitEvent *event = &contactEvents.hitEvents[i];
+			printf("Hit event!\n");
+			play_collision_sound(event);
+		}
+		record("collision handling");
+
+		// This is O(n), but should be fast enough in practice
+		for (size_t i = entities_size; i > 0; i--) {
+			if (out_of_bounds_entities[i - 1]) {
+				despawn_entity(i - 1);
+			}
+		}
+		record("removing entities");
+	}
+
+	Vector2 mouse_pos = GetMousePosition();
+	b2Vec2 gun_world_pos = b2Body_GetPosition(gun->body_id);
+	Vector2 gun_screen_pos = world_to_screen(gun_world_pos);
+	Vector2 gun_to_mouse = Vector2Subtract(mouse_pos, gun_screen_pos);
+	double gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
+	record("calculating gun_angle");
+
+	struct timespec current_time;
+	clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+	double elapsed_ms = get_elapsed_ms(*previous_round_fired_time, current_time);
+	bool can_fire = elapsed_ms > gun->gun.ms_per_round_fired;
+	if ((gun->gun.full_auto ? IsMouseButtonDown(MOUSE_BUTTON_LEFT) : IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && can_fire) {
+		*previous_round_fired_time = current_time;
+
+		struct gun_on_fns *on_fns = gun->on_fns;
+		if (on_fns->fire) {
+			on_fns->fire(gun->globals, gun->id);
+		}
+	}
+	record("calling the gun's on_fire()");
+
+	for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
+		struct entity *entity = &entities[entity_index];
+
+		if (entity->type == OBJECT_BULLET) {
+			struct bullet_on_fns *on_fns = entity->on_fns;
+			if (on_fns->tick) {
+				on_fns->tick(entity->globals, entity->id);
+			}
+		} else if (entity->type == OBJECT_COUNTER) {
+			struct counter_on_fns *on_fns = entity->on_fns;
+			if (on_fns->tick) {
+				on_fns->tick(entity->globals, entity->id);
+			}
+		}
+	}
+	record("calling bullets and counters their on_tick()");
+
+	b2Body_SetTransform(gun->body_id, gun_world_pos, b2MakeRot(gun_angle));
+	record("point gun to mouse");
+
+	draw();
 }
 
 int main(void) {
@@ -758,217 +1247,11 @@ int main(void) {
 	metal_blunt_2 = LoadSound("MetalBlunt2.wav");
 	assert(metal_blunt_2.frameCount > 0);
 
-	bool paused = false;
-
-	bool initialized = false;
-
 	struct timespec previous_round_fired_time;
 	clock_gettime(CLOCK_MONOTONIC, &previous_round_fired_time);
 
-	size_t gun_index = 0;
-
 	while (!WindowShouldClose()) {
-		measurements_size = 0;
-		record("start");
-
-		if (grug_mod_had_runtime_error()) {
-			snprintf(message, sizeof(message), "Runtime error: %s\n", grug_get_runtime_error_reason());
-			add_message();
-			snprintf(message, sizeof(message), "Error occurred when the game called %s(), from %s\n", grug_on_fn_name, grug_on_fn_path);
-			add_message();
-
-			draw();
-
-			// struct timespec req = {
-			// 	.tv_sec = 0,
-			// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
-			// };
-			// nanosleep(&req, NULL);
-
-			continue;
-		}
-		record("checking for runtime error");
-
-		if (grug_regenerate_modified_mods()) {
-			// snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
-			snprintf(message, sizeof(message), "Loading error: %s:%d: %s (grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
-			add_message();
-
-			draw();
-
-			// struct timespec req = {
-			// 	.tv_sec = 0,
-			// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
-			// };
-			// nanosleep(&req, NULL);
-
-			continue;
-		}
-		record("mod regeneration");
-
-		reload_modified_grug_entities();
-		record("reloading entities");
-
-		reload_modified_grug_resources();
-		record("reloading resources");
-
-		struct grug_file *gun_file = get_type_files("gun")[gun_index];
-		size_t gun_count = type_files_size;
-
-		struct grug_file **box_files = get_type_files("box");
-
-		struct grug_file *concrete_file = NULL;
-		// Use the first static box
-		for (size_t i = 0; i < type_files_size; i++) {
-			box_files[i]->define_fn();
-			if (box_definition.static_) {
-				concrete_file = box_files[i];
-				break;
-			}
-		}
-		assert(concrete_file && "There must be at least one static type of box, cause we want to form a floor");
-
-		struct grug_file *crate_file = NULL;
-		// Use the first non-static box
-		for (size_t i = 0; i < type_files_size; i++) {
-			box_files[i]->define_fn();
-			if (!box_definition.static_) {
-				crate_file = box_files[i];
-				break;
-			}
-		}
-		assert(crate_file && "There must be at least one non-static type of box, cause we want to have crates that can fall down");
-
-		if (!initialized) {
-			initialized = true;
-
-			b2Vec2 pos = { 100.0f, 0 };
-
-			gun = spawn_gun(gun_file, pos);
-
-			free(gun->globals);
-			gun->globals = malloc(gun_file->globals_size);
-			gun_file->init_globals_fn(gun->globals);
-
-			spawn_ground(concrete_file);
-			spawn_crates(crate_file);
-		}
-
-		float mouse_movement = GetMouseWheelMove();
-		if (mouse_movement > 0) {
-			gun_index++;
-			gun_index %= gun_count;
-
-			reload_entity(gun, gun_file);
-		}
-		if (mouse_movement < 0) {
-			gun_index--;
-			gun_index %= gun_count;
-
-			reload_entity(gun, gun_file);
-		}
-
-		if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
-			debug_info = !debug_info;
-		}
-		if (IsKeyPressed(KEY_B)) {
-			draw_bounding_box = !draw_bounding_box;
-		}
-		if (IsKeyPressed(KEY_P)) {
-			paused = !paused;
-		}
-		if (IsKeyPressed(KEY_S)) {
-			spawn_crates(crate_file);
-		}
-		if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
-			for (size_t i = entities_size; i > 0; i--) {
-				enum entity_type type = entities[i - 1].type;
-				if (type == OBJECT_BULLET || type == OBJECT_CRATE) {
-					remove_entity(i - 1);
-				}
-			}
-		}
-
-		if (!paused) {
-			float deltaTime = GetFrameTime();
-			b2World_Step(world_id, deltaTime, 4);
-			record("world step");
-
-			static bool removed_entities[MAX_ENTITIES];
-			memset(removed_entities, false, sizeof(removed_entities));
-			record("clearing removed_entities");
-
-			b2BodyEvents events = b2World_GetBodyEvents(world_id);
-			for (int32_t i = 0; i < events.moveCount; i++) {
-				b2BodyMoveEvent *event = events.moveEvents + i;
-				// Remove entities that end up below the screen
-				if (event->transform.p.y < -SCREEN_HEIGHT / 2.0f / TEXTURE_SCALE - 100.0f) {
-					removed_entities[(size_t)event->userData] = true;
-				}
-			}
-			record("getting body events");
-
-			if (sound_cooldown_metal_blunt_1 > 0) {
-				sound_cooldown_metal_blunt_1--;
-			}
-			if (sound_cooldown_metal_blunt_2 > 0) {
-				sound_cooldown_metal_blunt_2--;
-			}
-			b2ContactEvents contactEvents = b2World_GetContactEvents(world_id);
-			for (int32_t i = 0; i < contactEvents.hitCount; i++) {
-				b2ContactHitEvent *event = &contactEvents.hitEvents[i];
-				printf("Hit event!\n");
-				play_collision_sound(event);
-			}
-			record("collision handling");
-
-			// This is O(n), but should be fast enough in practice
-			for (size_t i = entities_size; i > 0; i--) {
-				if (removed_entities[i - 1]) {
-					remove_entity(i - 1);
-				}
-			}
-			record("removing entities");
-		}
-
-		Vector2 mouse_pos = GetMousePosition();
-		b2Vec2 gun_world_pos = b2Body_GetPosition(gun->body_id);
-		Vector2 gun_screen_pos = world_to_screen(gun_world_pos);
-		Vector2 gun_to_mouse = Vector2Subtract(mouse_pos, gun_screen_pos);
-		double gun_angle = atan2(-gun_to_mouse.y, gun_to_mouse.x);
-		record("calculating gun_angle");
-
-		struct timespec current_time;
-		clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-		double elapsed_ms = get_elapsed_ms(previous_round_fired_time, current_time);
-		bool can_fire = elapsed_ms > gun->gun.ms_per_round_fired;
-		if ((gun->gun.full_auto ? IsMouseButtonDown(MOUSE_BUTTON_LEFT) : IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && can_fire) {
-			previous_round_fired_time = current_time;
-
-			struct gun_on_fns *on_fns = gun->on_fns;
-			if (on_fns->fire) {
-				on_fns->fire(gun->globals, gun->id);
-			}
-		}
-		record("calling the gun's on_fire()");
-
-		for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
-			struct entity *entity = &entities[entity_index];
-
-			if (entity->type == OBJECT_BULLET) {
-				struct bullet_on_fns *on_fns = entity->on_fns;
-				if (on_fns->tick) {
-					on_fns->tick(entity->globals, entity->id);
-				}
-			}
-		}
-		record("calling bullets their on_tick()");
-
-		b2Body_SetTransform(gun->body_id, gun_world_pos, b2MakeRot(gun_angle));
-		record("point gun to mouse");
-
-		draw();
+		update(&previous_round_fired_time);
 	}
 
 	// TODO: Are these necessary?

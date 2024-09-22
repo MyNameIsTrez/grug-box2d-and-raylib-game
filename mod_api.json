@@ -19,9 +19,32 @@
 				{
 					"name": "full_auto",
 					"type": "bool"
+				},
+				{
+					"name": "companion",
+					"type": "entity",
+					"entity_type": "box"
 				}
 			],
 			"on_functions": {
+				"on_spawn": {
+					"description": "Called when the player's gun is spawned.",
+					"arguments": [
+						{
+							"name": "self",
+							"type": "i32"
+						}
+					]
+				},
+				"on_despawn": {
+					"description": "Called when the player's gun is despawned.",
+					"arguments": [
+						{
+							"name": "self",
+							"type": "i32"
+						}
+					]
+				},
 				"on_fire": {
 					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held.",
 					"arguments": [
@@ -79,6 +102,26 @@
 					"type": "bool"
 				}
 			]
+		},
+		"counter": {
+			"description": "A counter that prints information to the console every tick.",
+			"fields": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			],
+			"on_functions": {
+				"on_tick": {
+					"description": "Called every tick.",
+					"arguments": [
+						{
+							"name": "self",
+							"type": "i32"
+						}
+					]
+				}
+			}
 		}
 	},
 	"game_functions": {
@@ -87,7 +130,8 @@
 			"arguments": [
 				{
 					"name": "name",
-					"type": "entity"
+					"type": "entity",
+					"entity_type": "bullet"
 				},
 				{
 					"name": "x",
@@ -164,6 +208,71 @@
 					"name": "path",
 					"type": "resource",
 					"resource_extension": ".wav"
+				}
+			]
+		},
+		"spawn_counter": {
+			"description": "Spawns a counter, and returns its ID.",
+			"return_type": "i32",
+			"arguments": [
+				{
+					"name": "path",
+					"type": "entity",
+					"entity_type": "counter"
+				}
+			]
+		},
+		"despawn_entity": {
+			"description": "Despawns an entity, given its ID.",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				}
+			]
+		},
+		"map_has_i32": {
+			"description": "Returns whether an entity's i32 map contains a key.",
+			"return_type": "bool",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				},
+				{
+					"name": "key",
+					"type": "string"
+				}
+			]
+		},
+		"map_get_i32": {
+			"description": "Returns the value of a key in an entity's i32 map. Note that if the map doesn't contain the key, the game will throw an error, so make sure to call map_has_i32() first!",
+			"return_type": "i32",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				},
+				{
+					"name": "key",
+					"type": "string"
+				}
+			]
+		},
+		"map_set_i32": {
+			"description": "Sets the value of a key in an entity's i32 map. Note that if the map doesn't contain the key, the game will throw an error, so make sure to call map_has_i32() first!",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "i32"
+				},
+				{
+					"name": "key",
+					"type": "string"
+				},
+				{
+					"name": "value",
+					"type": "i32"
 				}
 			]
 		}

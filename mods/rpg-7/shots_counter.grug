@@ -1,0 +1,13 @@
+define() counter {
+    return {
+        .name = "Shots counter",
+    }
+}
+
+on_tick(self: i32) {
+    if map_has_i32(self, "shots") {
+        shots: i32 = map_get_i32(self, "shots")
+        print_string("shots:")
+        print_i32(shots)
+    }
+}
