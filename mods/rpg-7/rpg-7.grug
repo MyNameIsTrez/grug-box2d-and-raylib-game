@@ -3,31 +3,26 @@ define() gun {
         .name = "RPG-7",
         .sprite_path = "rpg-7.png",
         .rounds_per_minute = 600,
-        .full_auto = true,
         .companion = "vanilla:crate",
     }
 }
 
-counter: i32 = -1
+counter_id: i32 = -1
 
 on_spawn(self: i32) {
-    print_string("In RPG-7 its on_spawn()")
-    counter = spawn_counter("shots_counter")
-    map_set_i32(counter, "shots", 0)
+    counter_id = spawn_counter("shots_counter")
+    map_set_i32(counter_id, "shots", 0)
 }
 
 on_despawn(self: i32) {
-    print_string("In RPG-7 its on_despawn()")
-    despawn_entity(counter)
+    despawn_entity(counter_id)
 }
 
 on_fire(self: i32) {
-    print_string("In RPG-7 its on_fire()")
-    play_sound("sweetener_fire1.wav")
     spawn_bullet("pg-7vl", 0.0, 0.0, 0.0, 100.0)
 
-    if map_has_i32(counter, "shots") {
-        shots: i32 = map_get_i32(counter, "shots")
-        map_set_i32(counter, "shots", shots + 1)
+    if map_has_i32(counter_id, "shots") {
+        shots: i32 = map_get_i32(counter_id, "shots")
+        map_set_i32(counter_id, "shots", shots + 1)
     }
 }

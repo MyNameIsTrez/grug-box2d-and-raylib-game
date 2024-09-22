@@ -5,16 +5,3 @@ define() bullet {
         .density = 2.0,
     }
 }
-
-ticks_alive: i32 = 0
-
-on_tick(self: i32) {
-    print_string("PG-7VL")
-    print_i32(ticks_alive)
-    ticks_alive = ticks_alive + 1
-
-    # RIP your PC >:)
-    # spawn_bullet("pg-7vl", 0.0, 0.0, 0.0, 25.0)
-
-    spawn_bullet("vanilla:rpg-7", 0.0, 0.0, 0.0, 25.0)
-}

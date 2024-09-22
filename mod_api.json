@@ -17,10 +17,6 @@
 					"type": "i32"
 				},
 				{
-					"name": "full_auto",
-					"type": "bool"
-				},
-				{
 					"name": "companion",
 					"type": "entity",
 					"entity_type": "box"

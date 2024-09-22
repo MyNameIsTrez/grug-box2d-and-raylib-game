@@ -41,7 +41,6 @@ enum entity_type {
 
 struct gun_fields {
 	i32 ms_per_round_fired;
-	bool full_auto;
 };
 
 struct bullet_fields {
@@ -90,7 +89,6 @@ struct gun {
 	char *name;
 	char *sprite_path;
 	i32 ms_per_round_fired;
-	bool full_auto;
 	char *companion;
 };
 
@@ -424,7 +422,7 @@ void game_fn_define_bullet(char *name, char *sprite_path, float density) {
 	};
 }
 
-void game_fn_define_gun(char *name, char *sprite_path, i32 rounds_per_minute, bool full_auto, char *companion) {
+void game_fn_define_gun(char *name, char *sprite_path, i32 rounds_per_minute, char *companion) {
 	double rounds_per_second = rounds_per_minute / 60.0;
 	double seconds_per_round = 1.0 / rounds_per_second;
 
@@ -432,7 +430,6 @@ void game_fn_define_gun(char *name, char *sprite_path, i32 rounds_per_minute, bo
 		.name = name,
 		.sprite_path = sprite_path,
 		.ms_per_round_fired = seconds_per_round * 1000.0,
-		.full_auto = full_auto,
 		.companion = companion,
 	};
 }
@@ -728,7 +725,6 @@ static void copy_entity_definition(struct entity *entity) {
 	switch (entity->type) {
 		case OBJECT_GUN:
 			entity->gun.ms_per_round_fired = gun_definition.ms_per_round_fired;
-			entity->gun.full_auto = gun_definition.full_auto;
 			break;
 		case OBJECT_BULLET:
 			entity->bullet.density = bullet_definition.density;
@@ -1165,7 +1161,7 @@ static void update(struct timespec *previous_round_fired_time) {
 		b2ContactEvents contactEvents = b2World_GetContactEvents(world_id);
 		for (i32 i = 0; i < contactEvents.hitCount; i++) {
 			b2ContactHitEvent *event = &contactEvents.hitEvents[i];
-			printf("Hit event!\n");
+			// printf("Hit event!\n");
 			play_collision_sound(event);
 		}
 		record("collision handling");
@@ -1191,7 +1187,7 @@ static void update(struct timespec *previous_round_fired_time) {
 
 	double elapsed_ms = get_elapsed_ms(*previous_round_fired_time, current_time);
 	bool can_fire = elapsed_ms > gun->gun.ms_per_round_fired;
-	if ((gun->gun.full_auto ? IsMouseButtonDown(MOUSE_BUTTON_LEFT) : IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) && can_fire) {
+	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && can_fire) {
 		*previous_round_fired_time = current_time;
 
 		struct gun_on_fns *on_fns = gun->on_fns;

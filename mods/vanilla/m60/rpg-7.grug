@@ -1,7 +1,0 @@
-define() bullet {
-    return {
-        .name = "PG-7VL",
-        .sprite_path = "m60/rpg-7.png",
-        .density = 2.0,
-    }
-}
