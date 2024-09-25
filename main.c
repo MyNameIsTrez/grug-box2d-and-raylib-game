@@ -971,7 +971,7 @@ static void reload_gun(struct grug_file *gun_file) {
 	}
 }
 
-static void reload_modified_grug_resources(void) {
+static void reload_modified_resources(void) {
 	for (size_t i = 0; i < grug_resource_reloads_size; i++) {
 		struct grug_modified_resource reload = grug_resource_reloads[i];
 
@@ -987,7 +987,7 @@ static void reload_modified_grug_resources(void) {
 	}
 }
 
-static void reload_modified_grug_entities(void) {
+static void reload_modified_entities(void) {
 	for (size_t i = 0; i < grug_reloads_size; i++) {
 		struct grug_modified reload = grug_reloads[i];
 
@@ -1042,10 +1042,10 @@ static void update(struct timespec *previous_round_fired_time) {
 	}
 	record("mod regeneration");
 
-	reload_modified_grug_entities();
+	reload_modified_entities();
 	record("reloading entities");
 
-	reload_modified_grug_resources();
+	reload_modified_resources();
 	record("reloading resources");
 
 	static size_t gun_index = 0;
