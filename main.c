@@ -1007,31 +1007,14 @@ static void update(struct timespec *previous_round_fired_time) {
 	measurements_size = 0;
 	record("start");
 
-	if (grug_mod_had_runtime_error()) {
-		snprintf(message, sizeof(message), "Runtime error: %s\n", grug_get_runtime_error_reason());
-		add_message();
-		snprintf(message, sizeof(message), "Error occurred when the game called %s(), from %s\n", grug_on_fn_name, grug_on_fn_path);
-		add_message();
-
-		draw();
-
-		// struct timespec req = {
-		// 	.tv_sec = 0,
-		// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
-		// };
-		// nanosleep(&req, NULL);
-
-		return;
-	}
-	record("checking for runtime error");
-
 	if (grug_regenerate_modified_mods()) {
-		// snprintf(message, sizeof(message), "Loading error: %s:%d: %s\n", grug_error.path, grug_error.line_number, grug_error.msg);
-		snprintf(message, sizeof(message), "Loading error: %s:%d: %s (grug.c:%d)\n", grug_error.path, grug_error.line_number, grug_error.msg, grug_error.grug_c_line_number);
+		snprintf(message, sizeof(message), "grug loading error: %s, in %s (detected in grug.c:%d)\n", grug_error.msg, grug_error.path, grug_error.grug_c_line_number);
 		add_message();
 
 		draw();
 
+		// Slows regeneration attempts down,
+		// which was necessary for my university's network-synced file system
 		// struct timespec req = {
 		// 	.tv_sec = 0,
 		// 	.tv_nsec = 0.1 * NANOSECONDS_PER_SECOND,
@@ -1220,8 +1203,19 @@ static void update(struct timespec *previous_round_fired_time) {
 	draw();
 }
 
+static void runtime_error_handler(char *reason, enum grug_runtime_error_type type, char *on_fn_name, char *on_fn_path) {
+	(void)type;
+
+	snprintf(message, sizeof(message), "grug runtime error in %s(): %s, in %s\n", on_fn_name, reason, on_fn_path);
+	add_message();
+
+	draw();
+}
+
 int main(void) {
 	// SetTargetFPS(60);
+
+	grug_set_runtime_error_handler(runtime_error_handler);
 
 	SetConfigFlags(FLAG_VSYNC_HINT);
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
