@@ -3,8 +3,8 @@ include(FetchContent)
 
 project(game
 	VERSION 1.0.0
-	DESCRIPTION "Shows how to integrate Box2D with raylib"
-	HOMEPAGE_URL "https://box2d.org"
+	DESCRIPTION "Shows how to integrate grug with Box2D and raylib"
+	HOMEPAGE_URL "https://github.com/MyNameIsTrez/grug-raylib-game"
 	LANGUAGES C
 )
 
@@ -13,7 +13,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 SET(BOX2D_AVX2 OFF CACHE BOOL "Enable AVX2 (faster)")
 FetchContent_Declare(
 	box2d
-	GIT_REPOSITORY https://github.com/erincatto/box2c.git
+	GIT_REPOSITORY https://github.com/erincatto/box2d.git
 	GIT_TAG main
 	GIT_SHALLOW TRUE
 	GIT_PROGRESS TRUE

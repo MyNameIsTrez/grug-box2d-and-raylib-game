@@ -932,7 +932,7 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 	free(entity->texture_path);
 	entity->texture_path = strdup(texture_path);
 
-	b2DestroyShape(entity->shape_id);
+	b2DestroyShape(entity->shape_id, true);
 	entity->shape_id = add_shape(entity->body_id, entity->texture, entity->enable_hit_events, entity->type == OBJECT_BULLET ? entity->bullet.density : 1.0f);
 }
 
