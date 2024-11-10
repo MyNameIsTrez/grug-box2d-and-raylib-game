@@ -457,6 +457,8 @@ static void draw_debug_info(void) {
 
 	draw_debug_line_left(TextFormat("drawn entities: %zu", drawn_entities));
 
+	draw_debug_line_left(TextFormat("grug mode: %s", grug_are_on_fns_in_safe_mode() ? "safe" : "fast"));
+
 	debug_line_number = 0;
 
 	draw_debug_line_right(TextFormat("%.2f ms/frame", get_elapsed_ms(measurements[0].time, measurements[measurements_size - 1].time)));
@@ -1095,25 +1097,30 @@ static void update(struct timespec *previous_round_fired_time) {
 		reload_gun(gun_file);
 	}
 
-	if (IsKeyPressed(KEY_D)) { // Toggle drawing and measuring debug info
-		debug_info = !debug_info;
-	}
 	if (IsKeyPressed(KEY_B)) {
 		draw_bounding_box = !draw_bounding_box;
 	}
-	if (IsKeyPressed(KEY_P)) {
-		paused = !paused;
-	}
-	if (IsKeyPressed(KEY_S)) {
-		spawn_crates(crate_file);
-	}
-	if (IsKeyPressed(KEY_C)) { // Clear bullets and crates
+	// Clear bullets and crates
+	if (IsKeyPressed(KEY_C)) {
 		for (size_t i = entities_size; i > 0; i--) {
 			enum entity_type type = entities[i - 1].type;
 			if (type == OBJECT_BULLET || type == OBJECT_CRATE) {
 				despawn_entity(i - 1);
 			}
 		}
+	}
+	// Toggle drawing and measuring debug info
+	if (IsKeyPressed(KEY_D)) {
+		debug_info = !debug_info;
+	}
+	if (IsKeyPressed(KEY_F)) {
+		grug_toggle_on_fns_mode();
+	}
+	if (IsKeyPressed(KEY_P)) {
+		paused = !paused;
+	}
+	if (IsKeyPressed(KEY_S)) {
+		spawn_crates(crate_file);
 	}
 
 	if (!paused) {
@@ -1175,10 +1182,11 @@ static void update(struct timespec *previous_round_fired_time) {
 
 		struct gun_on_fns *on_fns = gun->on_fns;
 		if (on_fns->fire) {
+			record("deciding whether to fire");
 			on_fns->fire(gun->globals, gun->id);
+			record("calling the gun's on_fire()");
 		}
 	}
-	record("calling the gun's on_fire()");
 
 	for (size_t entity_index = 0; entity_index < entities_size; entity_index++) {
 		struct entity *entity = &entities[entity_index];
