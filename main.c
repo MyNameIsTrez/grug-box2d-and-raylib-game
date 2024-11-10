@@ -909,7 +909,7 @@ static void add_message(void) {
 		messages_start = (messages_start + 1) % MAX_MESSAGES;
 	}
 
-	strncpy(error->message, message, MAX_MESSAGE_LENGTH);
+	memcpy(error->message, message, strlen(message) + 1);
 
 	clock_gettime(CLOCK_MONOTONIC, &error->time);
 }
