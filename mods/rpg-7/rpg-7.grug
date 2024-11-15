@@ -7,18 +7,18 @@ define() gun {
     }
 }
 
-counter_id: i32 = -1
+counter_id: id = null_id
 
-on_spawn(self: i32) {
+on_spawn() {
     counter_id = spawn_counter("shots_counter")
     map_set_i32(counter_id, "shots", 0)
 }
 
-on_despawn(self: i32) {
+on_despawn() {
     despawn_entity(counter_id)
 }
 
-on_fire(self: i32) {
+on_fire() {
     print_string("RPG-7")
     spawn_bullet("pg-7vl", 0.0, 0.0, 0.0, 100.0)
 

@@ -4,9 +4,9 @@ define() counter {
     }
 }
 
-on_tick(self: i32) {
-    if map_has_i32(self, "shots") {
-        shots: i32 = map_get_i32(self, "shots")
+on_tick() {
+    if map_has_i32(me, "shots") {
+        shots: i32 = map_get_i32(me, "shots")
         print_string("shots:")
         print_i32(shots)
     }

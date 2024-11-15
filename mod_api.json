@@ -24,31 +24,13 @@
 			],
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the player's gun is spawned.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
+					"description": "Called when the player's gun is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the player's gun is despawned.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
+					"description": "Called when the player's gun is despawned."
 				},
 				"on_fire": {
-					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
+					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held."
 				}
 			}
 		},
@@ -71,13 +53,7 @@
 			],
 			"on_functions": {
 				"on_tick": {
-					"description": "Called every tick.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
+					"description": "Called every tick."
 				}
 			}
 		},
@@ -109,13 +85,7 @@
 			],
 			"on_functions": {
 				"on_tick": {
-					"description": "Called every tick.",
-					"arguments": [
-						{
-							"name": "self",
-							"type": "i32"
-						}
-					]
+					"description": "Called every tick."
 				}
 			}
 		}
@@ -209,7 +179,7 @@
 		},
 		"spawn_counter": {
 			"description": "Spawns a counter, and returns its ID.",
-			"return_type": "i32",
+			"return_type": "id",
 			"arguments": [
 				{
 					"name": "path",
@@ -223,7 +193,7 @@
 			"arguments": [
 				{
 					"name": "entity_id",
-					"type": "i32"
+					"type": "id"
 				}
 			]
 		},
@@ -233,7 +203,7 @@
 			"arguments": [
 				{
 					"name": "entity_id",
-					"type": "i32"
+					"type": "id"
 				},
 				{
 					"name": "key",
@@ -247,7 +217,7 @@
 			"arguments": [
 				{
 					"name": "entity_id",
-					"type": "i32"
+					"type": "id"
 				},
 				{
 					"name": "key",
@@ -260,7 +230,7 @@
 			"arguments": [
 				{
 					"name": "entity_id",
-					"type": "i32"
+					"type": "id"
 				},
 				{
 					"name": "key",

@@ -30,6 +30,7 @@
 
 typedef int32_t i32;
 typedef uint32_t u32;
+typedef uint64_t u64;
 
 enum entity_type {
 	OBJECT_GUN,
@@ -58,7 +59,7 @@ struct i32_map {
 };
 
 struct entity {
-	i32 id;
+	u64 id;
 	enum entity_type type;
 	b2BodyId body_id;
 	b2ShapeId shape_id;
@@ -149,7 +150,7 @@ static size_t messages_size;
 static size_t messages_start;
 static char message[MAX_MESSAGE_LENGTH];
 
-static i32 next_entity_id;
+static u64 next_entity_id;
 
 static Sound metal_blunt_1;
 static Sound metal_blunt_2;
@@ -160,33 +161,33 @@ static size_t sound_cooldown_metal_blunt_2;
 static bool paused = false;
 
 struct gun_on_fns {
-	void (*spawn)(void *globals, i32 self);
-	void (*despawn)(void *globals, i32 self);
-	void (*fire)(void *globals, i32 self);
+	void (*spawn)(void *globals);
+	void (*despawn)(void *globals);
+	void (*fire)(void *globals);
 };
 
 struct bullet_on_fns {
-	void (*tick)(void *globals, i32 self);
+	void (*tick)(void *globals);
 };
 
 struct counter_on_fns {
-	void (*tick)(void *globals, i32 self);
+	void (*tick)(void *globals);
 };
 
 static void add_message(void);
 static void despawn_entity(size_t entity_index);
-static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events);
+static u64 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events);
 
 // TODO: Optimize this to O(1), by adding an array that maps
 // TODO: the entity ID to the entities[] index
-static size_t get_entity_index_from_entity_id(i32 id) {
+static size_t get_entity_index_from_entity_id(u64 id) {
 	for (size_t i = 0; i < entities_size; i++) {
 		if (entities[i].id == id) {
 			return i;
 		}
 	}
 
-	snprintf(message, sizeof(message), "Failed to find the entity with ID %d\n", id);
+	snprintf(message, sizeof(message), "Failed to find the entity with ID %ld\n", id);
 	add_message();
 
 	return SIZE_MAX;
@@ -208,7 +209,7 @@ static bool streq(char *a, char *b) {
 	return strcmp(a, b) == 0;
 }
 
-void game_fn_map_set_i32(i32 id, char *key, i32 value) {
+void game_fn_map_set_i32(u64 id, char *key, i32 value) {
 	size_t entity_index = get_entity_index_from_entity_id(id);
 	if (entity_index == SIZE_MAX) {
 		return;
@@ -234,7 +235,7 @@ void game_fn_map_set_i32(i32 id, char *key, i32 value) {
 
 	if (i == UINT32_MAX) {
 		if (map->size >= MAX_I32_MAP_ENTRIES) {
-			snprintf(message, sizeof(message), "The i32 map of the entity with ID %d has %d entries, which exceeds MAX_I32_MAP_ENTRIES\n", id, MAX_I32_MAP_ENTRIES);
+			snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld has %d entries, which exceeds MAX_I32_MAP_ENTRIES\n", id, MAX_I32_MAP_ENTRIES);
 			add_message();
 
 			return;
@@ -255,7 +256,7 @@ void game_fn_map_set_i32(i32 id, char *key, i32 value) {
 	}
 }
 
-i32 game_fn_map_get_i32(i32 id, char *key) {
+i32 game_fn_map_get_i32(u64 id, char *key) {
 	size_t entity_index = get_entity_index_from_entity_id(id);
 	if (entity_index == SIZE_MAX) {
 		return -1;
@@ -264,7 +265,7 @@ i32 game_fn_map_get_i32(i32 id, char *key) {
 	struct i32_map *map = entities[entity_index].i32_map;
 
 	if (map->size == 0) {
-		snprintf(message, sizeof(message), "The i32 map of the entity with ID %d is empty, so can't contain the key '%s'\n", id, key);
+		snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld is empty, so can't contain the key '%s'\n", id, key);
 		add_message();
 
 		return -1;
@@ -274,7 +275,7 @@ i32 game_fn_map_get_i32(i32 id, char *key) {
 
 	while (true) {
 		if (i == UINT32_MAX) {
-			snprintf(message, sizeof(message), "The i32 map of the entity with ID %d doesn't contain the key '%s'\n", id, key);
+			snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld doesn't contain the key '%s'\n", id, key);
 			add_message();
 
 			break;
@@ -290,7 +291,7 @@ i32 game_fn_map_get_i32(i32 id, char *key) {
 	return -1;
 }
 
-bool game_fn_map_has_i32(i32 id, char *key) {
+bool game_fn_map_has_i32(u64 id, char *key) {
 	size_t entity_index = get_entity_index_from_entity_id(id);
 	if (entity_index == SIZE_MAX) {
 		return false;
@@ -319,7 +320,7 @@ bool game_fn_map_has_i32(i32 id, char *key) {
 	return false;
 }
 
-void game_fn_despawn_entity(i32 id) {
+void game_fn_despawn_entity(u64 id) {
 	size_t entity_index = get_entity_index_from_entity_id(id);
 
 	if (entity_index != SIZE_MAX) {
@@ -327,7 +328,7 @@ void game_fn_despawn_entity(i32 id) {
 	}
 }
 
-i32 game_fn_spawn_counter(char *name) {
+u64 game_fn_spawn_counter(char *name) {
 	b2BodyDef body_def = {0};
 
 	struct grug_file *file = grug_get_entity_file(name);
@@ -739,7 +740,7 @@ static void copy_entity_definition(struct entity *entity) {
 	}
 }
 
-static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events) {
+static u64 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_file *file, bool flippable, bool enable_hit_events) {
 	if (entities_size >= MAX_ENTITIES) {
 		snprintf(message, sizeof(message), "Won't spawn entity, as there are already %d entities, exceeding MAX_ENTITIES\n", MAX_ENTITIES);
 		add_message();
@@ -751,10 +752,17 @@ static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_f
 
 	*entity = (struct entity){0};
 
+	entity->id = next_entity_id;
+	if (entity->id == UINT64_MAX) {
+		next_entity_id = 0;
+	} else {
+		next_entity_id++;
+	}
+
 	entity->dll = file->dll;
 
 	entity->globals = malloc(file->globals_size);
-	file->init_globals_fn(entity->globals);
+	file->init_globals_fn(entity->globals, entity->id);
 
 	entity->on_fns = file->on_fns;
 
@@ -788,13 +796,6 @@ static i32 spawn_entity(b2BodyDef body_def, enum entity_type type, struct grug_f
 	memset(entity->i32_map->buckets, 0xff, MAX_I32_MAP_ENTRIES * sizeof(u32));
 	entity->i32_map->size = 0;
 
-	entity->id = next_entity_id;
-	if (entity->id == INT32_MAX) {
-		next_entity_id = 0;
-	} else {
-		next_entity_id++;
-	}
-
 	entities_size++;
 
 	return entity->id;
@@ -812,8 +813,6 @@ static void spawn_bullet(b2Vec2 pos, float angle, b2Vec2 velocity, struct grug_f
 
 static void spawn_companion(char *name) {
 	struct grug_file *file = grug_get_entity_file(name);
-
-	file->define_fn();
 
 	b2BodyDef body_def = b2DefaultBodyDef();
 	if (!box_definition.static_) {
@@ -941,7 +940,7 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 
 	free(entity->globals);
 	entity->globals = malloc(file->globals_size);
-	file->init_globals_fn(entity->globals);
+	file->init_globals_fn(entity->globals, entity->id);
 
 	entity->on_fns = file->on_fns;
 
@@ -959,7 +958,7 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 static void reload_gun(struct grug_file *gun_file) {
 	struct gun_on_fns *on_fns = gun->on_fns;
 	if (on_fns->despawn) {
-		on_fns->despawn(gun->globals, gun->id);
+		on_fns->despawn(gun->globals);
 	}
 
 	reload_entity(gun, gun_file);
@@ -969,7 +968,7 @@ static void reload_gun(struct grug_file *gun_file) {
 
 	on_fns = gun->on_fns; // This is necessary due to the reload_entity() call
 	if (on_fns->spawn) {
-		on_fns->spawn(gun->globals, gun->id);
+		on_fns->spawn(gun->globals);
 	}
 }
 
@@ -1072,11 +1071,11 @@ static void update(struct timespec *previous_round_fired_time) {
 
 		free(gun->globals);
 		gun->globals = malloc(gun_file->globals_size);
-		gun_file->init_globals_fn(gun->globals);
+		gun_file->init_globals_fn(gun->globals, gun->id);
 
 		struct gun_on_fns *on_fns = gun->on_fns;
 		if (on_fns->spawn) {
-			on_fns->spawn(gun->globals, gun->id);
+			on_fns->spawn(gun->globals);
 		}
 
 		spawn_ground(concrete_file);
@@ -1183,7 +1182,7 @@ static void update(struct timespec *previous_round_fired_time) {
 		struct gun_on_fns *on_fns = gun->on_fns;
 		if (on_fns->fire) {
 			record("deciding whether to fire");
-			on_fns->fire(gun->globals, gun->id);
+			on_fns->fire(gun->globals);
 			record("calling the gun's on_fire()");
 		}
 	}
@@ -1194,12 +1193,12 @@ static void update(struct timespec *previous_round_fired_time) {
 		if (entity->type == OBJECT_BULLET) {
 			struct bullet_on_fns *on_fns = entity->on_fns;
 			if (on_fns->tick) {
-				on_fns->tick(entity->globals, entity->id);
+				on_fns->tick(entity->globals);
 			}
 		} else if (entity->type == OBJECT_COUNTER) {
 			struct counter_on_fns *on_fns = entity->on_fns;
 			if (on_fns->tick) {
-				on_fns->tick(entity->globals, entity->id);
+				on_fns->tick(entity->globals);
 			}
 		}
 	}
