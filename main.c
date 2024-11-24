@@ -1009,7 +1009,11 @@ static void update(struct timespec *previous_round_fired_time) {
 	record("start");
 
 	if (grug_regenerate_modified_mods()) {
-		snprintf(message, sizeof(message), "grug loading error: %s, in %s (detected in grug.c:%d)\n", grug_error.msg, grug_error.path, grug_error.grug_c_line_number);
+		if (grug_loading_error_in_grug_file) {
+			snprintf(message, sizeof(message), "grug loading error: %s, in %s (detected in grug.c:%d)\n", grug_error.msg, grug_error.path, grug_error.grug_c_line_number);
+		} else {
+			snprintf(message, sizeof(message), "grug loading error: %s (detected in grug.c:%d)\n", grug_error.msg, grug_error.grug_c_line_number);
+		}
 		add_message();
 
 		draw();
