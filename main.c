@@ -998,7 +998,7 @@ static void reload_modified_entities(void) {
 			struct entity *entity = &entities[entity_index];
 
 			if (reload.old_dll == entity->dll) {
-				reload_entity(entity, reload.file);
+				reload_entity(entity, &reload.file);
 			}
 		}
 	}
@@ -1226,7 +1226,7 @@ static void runtime_error_handler(char *reason, enum grug_runtime_error_type typ
 int main(void) {
 	// SetTargetFPS(60);
 
-	grug_set_runtime_error_handler(runtime_error_handler);
+	grug_init(runtime_error_handler, "mod_api.json", "mods");
 
 	SetConfigFlags(FLAG_VSYNC_HINT);
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "box2d-raylib");
