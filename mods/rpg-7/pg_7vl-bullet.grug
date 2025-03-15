@@ -1,0 +1,5 @@
+on_spawn() {
+    set_bullet_name("PG-7VL")
+    set_bullet_sprite_path("pg-7vl.png")
+    set_bullet_density(2.0)
+}

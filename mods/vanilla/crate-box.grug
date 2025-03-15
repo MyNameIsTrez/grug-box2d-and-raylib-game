@@ -1,0 +1,4 @@
+on_spawn() {
+    set_box_name("Crate")
+    set_box_sprite_path("crate.png")
+}

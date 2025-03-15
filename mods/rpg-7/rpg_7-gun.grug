@@ -1,15 +1,11 @@
-define() gun {
-    return {
-        .name = "RPG-7",
-        .sprite_path = "rpg-7.png",
-        .rounds_per_minute = 600,
-        .companion = "vanilla:crate",
-    }
-}
-
 counter_id: id = null_id
 
 on_spawn() {
+    set_gun_name("RPG-7")
+    set_gun_sprite_path("rpg-7.png")
+    set_gun_rounds_per_minute(600)
+    set_gun_companion("vanilla:crate")
+
     counter_id = spawn_counter("shots_counter")
     map_set_i32(counter_id, "shots", 0)
 }
@@ -20,7 +16,7 @@ on_despawn() {
 
 on_fire() {
     print_string("RPG-7")
-    spawn_bullet("pg-7vl", 0.0, 0.0, 0.0, 100.0)
+    spawn_bullet("pg_7vl", 0.0, 0.0, 0.0, 100.0)
 
     if map_has_i32(counter_id, "shots") {
         shots: i32 = map_get_i32(counter_id, "shots")

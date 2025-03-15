@@ -1,7 +1,5 @@
-define() counter {
-    return {
-        .name = "Shots counter",
-    }
+on_spawn() {
+    set_counter_name("Shots counter")
 }
 
 on_tick() {

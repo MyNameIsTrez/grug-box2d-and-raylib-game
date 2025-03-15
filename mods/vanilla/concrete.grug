@@ -1,7 +1,0 @@
-define() box {
-    return {
-        .name = "Concrete",
-        .sprite_path = "concrete.png",
-        .static = true,
-    }
-}

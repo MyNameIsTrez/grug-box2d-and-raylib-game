@@ -1,0 +1,11 @@
+on_spawn() {
+    set_gun_name("M60")
+    set_gun_sprite_path("m60/m60.png")
+    set_gun_rounds_per_minute(60)
+    set_gun_companion("crate")
+}
+
+on_fire() {
+    print_string("M60")
+    spawn_bullet("rpg-7:pg_7vl", 0.0, 0.0, 0.0, 100.0)
+}

@@ -2,32 +2,12 @@
 	"entities": {
 		"gun": {
 			"description": "The gun in the center of the screen that the player fires by holding the left mouse button.",
-			"fields": [
-				{
-					"name": "name",
-					"type": "string"
-				},
-				{
-					"name": "sprite_path",
-					"type": "resource",
-					"resource_extension": ".png"
-				},
-				{
-					"name": "rounds_per_minute",
-					"type": "i32"
-				},
-				{
-					"name": "companion",
-					"type": "entity",
-					"entity_type": "box"
-				}
-			],
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the player's gun is spawned."
+					"description": "Called when the entity is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the player's gun is despawned."
+					"description": "Called when the entity is despawned."
 				},
 				"on_fire": {
 					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held."
@@ -36,22 +16,13 @@
 		},
 		"bullet": {
 			"description": "The bullet fired by the player's gun.",
-			"fields": [
-				{
-					"name": "name",
-					"type": "string"
-				},
-				{
-					"name": "sprite_path",
-					"type": "resource",
-					"resource_extension": ".png"
-				},
-				{
-					"name": "density",
-					"type": "f32"
-				}
-			],
 			"on_functions": {
+				"on_spawn": {
+					"description": "Called when the entity is spawned."
+				},
+				"on_despawn": {
+					"description": "Called when the entity is despawned."
+				},
 				"on_tick": {
 					"description": "Called every tick."
 				}
@@ -59,31 +30,24 @@
 		},
 		"box": {
 			"description": "A static or dynamic box.",
-			"fields": [
-				{
-					"name": "name",
-					"type": "string"
+			"on_functions": {
+				"on_spawn": {
+					"description": "Called when the entity is spawned."
 				},
-				{
-					"name": "sprite_path",
-					"type": "resource",
-					"resource_extension": ".png"
-				},
-				{
-					"name": "static",
-					"type": "bool"
+				"on_despawn": {
+					"description": "Called when the entity is despawned."
 				}
-			]
+			}
 		},
 		"counter": {
 			"description": "A counter that prints information to the console every tick.",
-			"fields": [
-				{
-					"name": "name",
-					"type": "string"
-				}
-			],
 			"on_functions": {
+				"on_spawn": {
+					"description": "Called when the entity is spawned."
+				},
+				"on_despawn": {
+					"description": "Called when the entity is despawned."
+				},
 				"on_tick": {
 					"description": "Called every tick."
 				}
@@ -91,6 +55,100 @@
 		}
 	},
 	"game_functions": {
+		"set_gun_name": {
+			"description": "Sets the name of the spawned gun.",
+			"arguments": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			]
+		},
+		"set_gun_sprite_path": {
+			"description": "Sets the sprite path of the spawned gun.",
+			"arguments": [
+				{
+					"name": "sprite_path",
+					"type": "resource",
+					"resource_extension": ".png"
+				}
+			]
+		},
+		"set_gun_rounds_per_minute": {
+			"description": "Sets the rounds per minute of the spawned gun.",
+			"arguments": [
+				{
+					"name": "rounds_per_minute",
+					"type": "i32"
+				}
+			]
+		},
+		"set_gun_companion": {
+			"description": "Sets the companion of the spawned gun. This is a box that gets spawned alongside the gun, to show off being able to spawn other entitities during on_spawn().",
+			"arguments": [
+				{
+					"name": "companion",
+					"type": "entity",
+					"entity_type": "box"
+				}
+			]
+		},
+		"set_bullet_name": {
+			"description": "Sets the name of the spawned bullet.",
+			"arguments": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			]
+		},
+		"set_bullet_sprite_path": {
+			"description": "Sets the sprite path of the spawned bullet.",
+			"arguments": [
+				{
+					"name": "sprite_path",
+					"type": "resource",
+					"resource_extension": ".png"
+				}
+			]
+		},
+		"set_bullet_density": {
+			"description": "Sets the density of the spawned bullet.",
+			"arguments": [
+				{
+					"name": "density",
+					"type": "f32"
+				}
+			]
+		},
+		"set_box_name": {
+			"description": "Sets the name of the spawned box.",
+			"arguments": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			]
+		},
+		"set_box_sprite_path": {
+			"description": "Sets the sprite path of the spawned box.",
+			"arguments": [
+				{
+					"name": "sprite_path",
+					"type": "resource",
+					"resource_extension": ".png"
+				}
+			]
+		},
+		"set_counter_name": {
+			"description": "Sets the name of the spawned counter.",
+			"arguments": [
+				{
+					"name": "name",
+					"type": "string"
+				}
+			]
+		},
 		"spawn_bullet": {
 			"description": "Spawns a bullet.",
 			"arguments": [
@@ -114,6 +172,26 @@
 				{
 					"name": "velocity_in_meters_per_second",
 					"type": "f32"
+				}
+			]
+		},
+		"spawn_counter": {
+			"description": "Spawns a counter, and returns its ID.",
+			"return_type": "id",
+			"arguments": [
+				{
+					"name": "path",
+					"type": "entity",
+					"entity_type": "counter"
+				}
+			]
+		},
+		"despawn_entity": {
+			"description": "Despawns an entity, given its ID.",
+			"arguments": [
+				{
+					"name": "entity_id",
+					"type": "id"
 				}
 			]
 		},
@@ -174,26 +252,6 @@
 					"name": "path",
 					"type": "resource",
 					"resource_extension": ".wav"
-				}
-			]
-		},
-		"spawn_counter": {
-			"description": "Spawns a counter, and returns its ID.",
-			"return_type": "id",
-			"arguments": [
-				{
-					"name": "path",
-					"type": "entity",
-					"entity_type": "counter"
-				}
-			]
-		},
-		"despawn_entity": {
-			"description": "Despawns an entity, given its ID.",
-			"arguments": [
-				{
-					"name": "entity_id",
-					"type": "id"
 				}
 			]
 		},
