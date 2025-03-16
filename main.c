@@ -1159,8 +1159,23 @@ static void update(struct timespec *previous_round_fired_time) {
 
 	struct grug_file **box_files = get_type_files("box");
 
-	struct grug_file *concrete_file = box_files[0];
-	struct grug_file *box_file = box_files[1];
+	struct grug_file *concrete_file = NULL;
+	for (size_t i = 0; i < type_files_size; i++) {
+		struct grug_file *box_file = box_files[i];
+		if (streq(box_file->entity, "vanilla:concrete")) {
+			concrete_file = box_file;
+		}
+	}
+	assert(concrete_file && "Expected 'vanilla:concrete' to be present, for forming the ground");
+
+	struct grug_file *crate_file = NULL;
+	for (size_t i = 0; i < type_files_size; i++) {
+		struct grug_file *box_file = box_files[i];
+		if (streq(box_file->entity, "vanilla:crate")) {
+			crate_file = box_file;
+		}
+	}
+	assert(crate_file && "Expected 'vanilla:crate' to be present, for having crates that fall down");
 
 	static bool initialized = false;
 	if (!initialized) {
@@ -1175,7 +1190,7 @@ static void update(struct timespec *previous_round_fired_time) {
 		gun_file->init_globals_fn(gun->globals, gun->id);
 
 		spawn_ground(concrete_file);
-		spawn_boxes(box_file);
+		spawn_boxes(crate_file);
 	}
 
 	float mouse_movement = GetMouseWheelMove();
@@ -1215,7 +1230,7 @@ static void update(struct timespec *previous_round_fired_time) {
 		paused = !paused;
 	}
 	if (IsKeyPressed(KEY_S)) {
-		spawn_boxes(box_file);
+		spawn_boxes(crate_file);
 	}
 
 	if (!paused) {
