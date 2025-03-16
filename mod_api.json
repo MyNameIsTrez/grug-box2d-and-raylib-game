@@ -231,7 +231,7 @@
 			"description": "Prints a string.",
 			"arguments": [
 				{
-					"name": "s",
+					"name": "msg",
 					"type": "string"
 				}
 			]
