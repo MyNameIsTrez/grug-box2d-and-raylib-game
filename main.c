@@ -384,8 +384,8 @@ void game_fn_print_bool(bool b) {
 	add_message();
 }
 
-void game_fn_print_string(char *s) {
-	snprintf(message, sizeof(message), "%s\n", s);
+void game_fn_print_string(char *msg) {
+	snprintf(message, sizeof(message), "%s\n", msg);
 	add_message();
 }
 
