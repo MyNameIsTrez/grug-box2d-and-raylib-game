@@ -28,6 +28,31 @@
 #define NANOSECONDS_PER_SECOND 1000000000L
 #define MAX_I32_MAP_ENTRIES 420
 
+#define SET_CALLED(property) { \
+	if (set_ ## property ## _called) { \
+		snprintf(message, sizeof(message), "set_" #property "() was called twice by on_spawn()\n"); \
+		add_message(); \
+	} else { \
+		set_ ## property ## _called = true; \
+	} \
+}
+
+#define ASSERT_HAS_ON_SPAWN() { \
+	if (!cast_on_fns->spawn) { \
+		snprintf(message, sizeof(message), "%s is missing on_spawn()\n", entity->grug_entity); \
+		add_message(); \
+		return true; \
+	} \
+}
+
+#define ASSERT_ON_SPAWN_PROPERTY_SET(property) { \
+	if (!property ## _called) { \
+		snprintf(message, sizeof(message), "%s its on_spawn() did not call " #property "()\n", entity->grug_entity); \
+		add_message(); \
+		return true; \
+	} \
+}
+
 typedef int32_t i32;
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -64,6 +89,7 @@ struct i32_map {
 struct entity {
 	u64 id;
 	enum entity_type type;
+	char *grug_entity;
 	b2BodyId body_id;
 	b2ShapeId shape_id;
 	Texture texture;
@@ -521,46 +547,122 @@ static void write_on_spawn_data_to_entity(struct entity *entity) {
 	}
 }
 
+static bool set_counter_name_called;
+void game_fn_set_counter_name(char *name) {
+	SET_CALLED(counter_name);
+	counter_on_spawn_data.name = name;
+}
+
+static bool set_box_sprite_path_called;
+void game_fn_set_box_sprite_path(char *sprite_path) {
+	SET_CALLED(box_sprite_path);
+	box_on_spawn_data.sprite_path = sprite_path;
+}
+static bool set_box_name_called;
+void game_fn_set_box_name(char *name) {
+	SET_CALLED(box_name);
+	box_on_spawn_data.name = name;
+}
+
+static bool set_bullet_density_called;
+void game_fn_set_bullet_density(float density) {
+	SET_CALLED(bullet_density);
+	bullet_on_spawn_data.density = density;
+}
+static bool set_bullet_sprite_path_called;
+void game_fn_set_bullet_sprite_path(char *sprite_path) {
+	SET_CALLED(bullet_sprite_path);
+	bullet_on_spawn_data.sprite_path = sprite_path;
+}
+static bool set_bullet_name_called;
+void game_fn_set_bullet_name(char *name) {
+	SET_CALLED(bullet_name);
+	bullet_on_spawn_data.name = name;
+}
+
+static bool set_gun_companion_called;
+void game_fn_set_gun_companion(char *companion) {
+	SET_CALLED(gun_companion);
+	gun_on_spawn_data.companion = companion;
+}
+static bool set_gun_rounds_per_minute_called;
+void game_fn_set_gun_rounds_per_minute(i32 rounds_per_minute) {
+	SET_CALLED(gun_rounds_per_minute);
+	double rounds_per_second = rounds_per_minute / 60.0;
+	double seconds_per_round = 1.0 / rounds_per_second;
+	gun_on_spawn_data.ms_per_round_fired = seconds_per_round * 1000.0;
+}
+static bool set_gun_sprite_path_called;
+void game_fn_set_gun_sprite_path(char *sprite_path) {
+	SET_CALLED(gun_sprite_path);
+	gun_on_spawn_data.sprite_path = sprite_path;
+}
+static bool set_gun_name_called;
+void game_fn_set_gun_name(char *name) {
+	SET_CALLED(gun_name);
+	gun_on_spawn_data.name = name;
+}
+
 static bool call_on_spawn(struct entity *entity, void *on_fns) {
 	switch (entity->type) {
 		case OBJECT_GUN: {
 			struct gun_on_fns *cast_on_fns = on_fns;
-			if (!cast_on_fns->spawn) {
-				// TODO: Print an error message about guns needing a sprite and such
-				assert(false);
-				return true;
-			}
+			ASSERT_HAS_ON_SPAWN();
+
+			set_gun_name_called = false;
+			set_gun_sprite_path_called = false;
+			set_gun_rounds_per_minute_called = false;
+			set_gun_companion_called = false;
+
 			cast_on_fns->spawn(entity->globals);
+
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_name);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_sprite_path);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_rounds_per_minute);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_companion);
+
 			break;
 		}
 		case OBJECT_BULLET: {
 			struct bullet_on_fns *cast_on_fns = on_fns;
-			if (!cast_on_fns->spawn) {
-				// TODO: Print an error message about bullets needing a sprite and such
-				assert(false);
-				return true;
-			}
+			ASSERT_HAS_ON_SPAWN();
+
+			set_bullet_name_called = false;
+			set_bullet_sprite_path_called = false;
+			set_bullet_density_called = false;
+
 			cast_on_fns->spawn(entity->globals);
+
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_name);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_sprite_path);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_density);
+
 			break;
 		}
 		case OBJECT_BOX: {
 			struct box_on_fns *cast_on_fns = on_fns;
-			if (!cast_on_fns->spawn) {
-				// TODO: Print an error message about boxes needing a sprite and such
-				assert(false);
-				return true;
-			}
+			ASSERT_HAS_ON_SPAWN();
+
+			set_box_name_called = false;
+			set_box_sprite_path_called = false;
+
 			cast_on_fns->spawn(entity->globals);
+
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_box_name);
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_box_sprite_path);
+
 			break;
 		}
 		case OBJECT_COUNTER: {
 			struct counter_on_fns *cast_on_fns = on_fns;
-			if (!cast_on_fns->spawn) {
-				// TODO: Print an error message about counters needing a name
-				assert(false);
-				return true;
-			}
+			ASSERT_HAS_ON_SPAWN();
+
+			set_counter_name_called = false;
+
 			cast_on_fns->spawn(entity->globals);
+
+			ASSERT_ON_SPAWN_PROPERTY_SET(set_counter_name);
+
 			break;
 		}
 	}
@@ -596,6 +698,7 @@ static struct entity *spawn_entity(enum entity_type type, struct grug_file *file
 	entity->on_fns = file->on_fns;
 
 	entity->type = type;
+	entity->grug_entity = file->entity;
 
 	entity->i32_map = malloc(sizeof(*entity->i32_map));
 	memset(entity->i32_map->buckets, 0xff, MAX_I32_MAP_ENTRIES * sizeof(u32));
@@ -659,43 +762,6 @@ void game_fn_spawn_bullet(char *name, float x, float y, float angle_in_degrees, 
 	b2BodyDef body_def = get_bullet_body_def(muzzle_pos, angle_in_degrees, velocity_in_meters_per_second);
 
 	add_body(entity, body_def, false, true);
-}
-
-void game_fn_set_counter_name(char *name) {
-	counter_on_spawn_data.name = name;
-}
-
-void game_fn_set_box_sprite_path(char *sprite_path) {
-	box_on_spawn_data.sprite_path = sprite_path;
-}
-void game_fn_set_box_name(char *name) {
-	box_on_spawn_data.name = name;
-}
-
-void game_fn_set_bullet_density(float density) {
-	bullet_on_spawn_data.density = density;
-}
-void game_fn_set_bullet_sprite_path(char *sprite_path) {
-	bullet_on_spawn_data.sprite_path = sprite_path;
-}
-void game_fn_set_bullet_name(char *name) {
-	bullet_on_spawn_data.name = name;
-}
-
-void game_fn_set_gun_companion(char *companion) {
-	gun_on_spawn_data.companion = companion;
-}
-void game_fn_set_gun_rounds_per_minute(i32 rounds_per_minute) {
-	double rounds_per_second = rounds_per_minute / 60.0;
-	double seconds_per_round = 1.0 / rounds_per_second;
-
-	gun_on_spawn_data.ms_per_round_fired = seconds_per_round * 1000.0;
-}
-void game_fn_set_gun_sprite_path(char *sprite_path) {
-	gun_on_spawn_data.sprite_path = sprite_path;
-}
-void game_fn_set_gun_name(char *name) {
-	gun_on_spawn_data.name = name;
 }
 
 static double get_elapsed_ms(struct timespec start, struct timespec end) {
@@ -1214,7 +1280,7 @@ static void update(struct timespec *previous_round_fired_time) {
 	if (IsKeyPressed(KEY_C)) {
 		for (size_t i = entities_size; i > 0; i--) {
 			enum entity_type type = entities[i - 1].type;
-			if (type == OBJECT_BULLET || type == OBJECT_BOX) {
+			if (type == OBJECT_BULLET || (type == OBJECT_BOX && streq(entities[i - 1].grug_entity, "vanilla:crate"))) {
 				despawn_entity(i - 1);
 			}
 		}
