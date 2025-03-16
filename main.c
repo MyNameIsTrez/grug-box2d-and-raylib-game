@@ -678,17 +678,12 @@ static struct entity *spawn_entity(enum entity_type type, struct grug_file *file
 		return NULL;
 	}
 
-	size_t entity_index = entities_size++;
+	size_t entity_index = entities_size;
 	struct entity *entity = &entities[entity_index];
 
 	*entity = (struct entity){0};
 
 	entity->id = next_entity_id;
-	if (entity->id == UINT64_MAX) {
-		next_entity_id = 0;
-	} else {
-		next_entity_id++;
-	}
 
 	entity->dll = file->dll;
 
@@ -705,10 +700,20 @@ static struct entity *spawn_entity(enum entity_type type, struct grug_file *file
 	entity->i32_map->size = 0;
 
 	if (call_on_spawn(entity, file->on_fns)) {
+		free(entity->globals);
+		free(entity->i32_map);
 		return NULL;
 	}
 
 	write_on_spawn_data_to_entity(entity);
+
+	entities_size++;
+
+	if (entity->id == UINT64_MAX) {
+		next_entity_id = 0;
+	} else {
+		next_entity_id++;
+	}
 
 	return entity;
 }
@@ -1118,6 +1123,7 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 	} while (entity->texture.id == 0);
 	printf("The reloaded entity's new texture took %zu attempt%s to load succesfully\n", attempts, attempts == 1 ? "" : "s");
 
+	assert(entity->texture_path);
 	free(entity->texture_path);
 	entity->texture_path = strdup(texture_path);
 
@@ -1126,8 +1132,6 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 }
 
 static void reload_entity(struct entity *entity, struct grug_file *file) {
-	call_on_despawn(entity, entity->on_fns);
-
 	entity->dll = file->dll;
 
 	free(entity->globals);
@@ -1135,6 +1139,10 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 	file->init_globals_fn(entity->globals, entity->id);
 
 	entity->on_fns = file->on_fns;
+
+	// call_on_despawn() must come after entity->on_fns has been updated,
+	// since on_fns will otherwise be a dangling pointer
+	call_on_despawn(entity, entity->on_fns);
 
 	if (call_on_spawn(entity, file->on_fns)) {
 		return;
