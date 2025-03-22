@@ -1,27 +1,27 @@
 {
 	"entities": {
 		"gun": {
-			"description": "The gun in the center of the screen that the player fires by holding the left mouse button.",
+			"description": "The gun that the player fires by holding the left mouse button.",
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the entity is spawned."
+					"description": "Called when the gun is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the entity is despawned."
+					"description": "Called when the gun is despawned."
 				},
 				"on_fire": {
-					"description": "Called when the player's gun fires, which happens when the left mouse button is pressed or held."
+					"description": "Called when the gun fires."
 				}
 			}
 		},
 		"bullet": {
-			"description": "The bullet fired by the player's gun.",
+			"description": "The bullet fired by the gun.",
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the entity is spawned."
+					"description": "Called when the bullet is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the entity is despawned."
+					"description": "Called when the bullet is despawned."
 				},
 				"on_tick": {
 					"description": "Called every tick."
@@ -32,10 +32,10 @@
 			"description": "A static or dynamic box.",
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the entity is spawned."
+					"description": "Called when the box is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the entity is despawned."
+					"description": "Called when the box is despawned."
 				}
 			}
 		},
@@ -43,10 +43,10 @@
 			"description": "A counter that prints information to the console every tick.",
 			"on_functions": {
 				"on_spawn": {
-					"description": "Called when the entity is spawned."
+					"description": "Called when the counter is spawned."
 				},
 				"on_despawn": {
-					"description": "Called when the entity is despawned."
+					"description": "Called when the counter is despawned."
 				},
 				"on_tick": {
 					"description": "Called every tick."
