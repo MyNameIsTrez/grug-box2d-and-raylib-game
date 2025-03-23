@@ -1,4 +1,0 @@
-on_spawn() {
-    set_box_name("Concrete")
-    set_box_sprite_path("concrete.png")
-}

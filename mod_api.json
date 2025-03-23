@@ -28,17 +28,6 @@
 				}
 			}
 		},
-		"box": {
-			"description": "A static or dynamic box.",
-			"on_functions": {
-				"on_spawn": {
-					"description": "Called when the box is spawned."
-				},
-				"on_despawn": {
-					"description": "Called when the box is despawned."
-				}
-			}
-		},
 		"counter": {
 			"description": "A counter that prints information to the console every tick.",
 			"on_functions": {
@@ -83,16 +72,6 @@
 				}
 			]
 		},
-		"set_gun_companion": {
-			"description": "Sets the companion of the spawned gun. This is a box that gets spawned alongside the gun, to show off being able to spawn other entitities during on_spawn().",
-			"arguments": [
-				{
-					"name": "companion",
-					"type": "entity",
-					"entity_type": "box"
-				}
-			]
-		},
 		"set_bullet_name": {
 			"description": "Sets the name of the spawned bullet.",
 			"arguments": [
@@ -118,25 +97,6 @@
 				{
 					"name": "density",
 					"type": "f32"
-				}
-			]
-		},
-		"set_box_name": {
-			"description": "Sets the name of the spawned box.",
-			"arguments": [
-				{
-					"name": "name",
-					"type": "string"
-				}
-			]
-		},
-		"set_box_sprite_path": {
-			"description": "Sets the sprite path of the spawned box.",
-			"arguments": [
-				{
-					"name": "sprite_path",
-					"type": "resource",
-					"resource_extension": ".png"
 				}
 			]
 		},

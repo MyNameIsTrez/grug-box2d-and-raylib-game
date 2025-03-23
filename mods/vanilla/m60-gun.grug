@@ -1,0 +1,13 @@
+on_spawn() {
+    set_gun_name("M60")
+    set_gun_sprite_path("m60.png")
+    set_gun_rounds_per_minute(60)
+}
+
+on_fire() {
+    x: f32 = 0.0
+    y: f32 = -1.5
+    angle: f32 = 0.0
+    velocity: f32 = 100.0
+    spawn_bullet("pg_7vl", x, y, angle, velocity)
+}

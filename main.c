@@ -13,9 +13,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#define SCREEN_WIDTH 1280
+#define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 720
-#define TEXTURE_SCALE 2.0f
+#define TEXTURE_SCALE 5.0f
 #define PIXELS_PER_METER 20.0f // Taken from Cortex Command, where this program's sprites come from: https://github.com/cortex-command-community/Cortex-Command-Community-Project/blob/afddaa81b6d71010db299842d5594326d980b2cc/Source/System/Constants.h#L23
 #define MAX_ENTITIES 1000 // Prevents box2d crashing when there's more than 32k overlapping entities, which can happen when the game is paused and the player shoots over 32k bullets
 #define FONT_SIZE 10
@@ -60,7 +60,6 @@ typedef uint64_t u64;
 enum entity_type {
 	OBJECT_GUN,
 	OBJECT_BULLET,
-	OBJECT_BOX,
 	OBJECT_COUNTER,
 };
 
@@ -70,10 +69,6 @@ struct gun_data {
 
 struct bullet_data {
 	float density;
-};
-
-struct box_data {
-	char *sprite_path;
 };
 
 struct i32_map {
@@ -112,7 +107,6 @@ struct entity {
 	union {
 		struct gun_data gun;
 		struct bullet_data bullet;
-		struct box_data box;
 	};
 };
 
@@ -120,18 +114,12 @@ struct gun_on_spawn_data {
 	char *name;
 	char *sprite_path;
 	i32 ms_per_round_fired;
-	char *companion;
 };
 
 struct bullet_on_spawn_data {
 	char *name;
 	char *sprite_path;
 	float density;
-};
-
-struct box_on_spawn_data {
-	char *name;
-	char *sprite_path;
 };
 
 struct counter_on_spawn_data {
@@ -158,7 +146,6 @@ static size_t measurements_size;
 
 static struct gun_on_spawn_data gun_on_spawn_data;
 static struct bullet_on_spawn_data bullet_on_spawn_data;
-static struct box_on_spawn_data box_on_spawn_data;
 static struct counter_on_spawn_data counter_on_spawn_data;
 
 static struct entity *gun;
@@ -166,7 +153,7 @@ static struct entity *gun;
 static struct grug_file *type_files[MAX_TYPE_FILES];
 static size_t type_files_size;
 
-static bool debug_info = true;
+static bool debug_info = false;
 static bool draw_bounding_box = false;
 
 struct message_data {
@@ -199,11 +186,6 @@ struct bullet_on_fns {
 	void (*spawn)(void *globals);
 	void (*despawn)(void *globals);
 	void (*tick)(void *globals);
-};
-
-struct box_on_fns {
-	void (*spawn)(void *globals);
-	void (*despawn)(void *globals);
 };
 
 struct counter_on_fns {
@@ -430,8 +412,6 @@ static char *get_texture_path(struct entity *entity) {
 			return gun_on_spawn_data.sprite_path;
 		case OBJECT_BULLET:
 			return bullet_on_spawn_data.sprite_path;
-		case OBJECT_BOX:
-			return box_on_spawn_data.sprite_path;
 		case OBJECT_COUNTER:
 			break;
 	}
@@ -466,14 +446,6 @@ static void call_on_despawn(struct entity *entity, void *on_fns) {
 		}
 		case OBJECT_BULLET: {
 			struct bullet_on_fns *cast_on_fns = on_fns;
-			if (!cast_on_fns->despawn) {
-				break;
-			}
-			cast_on_fns->despawn(entity->globals);
-			break;
-		}
-		case OBJECT_BOX: {
-			struct box_on_fns *cast_on_fns = on_fns;
 			if (!cast_on_fns->despawn) {
 				break;
 			}
@@ -539,9 +511,6 @@ static void write_on_spawn_data_to_entity(struct entity *entity) {
 		case OBJECT_BULLET:
 			entity->bullet.density = bullet_on_spawn_data.density;
 			break;
-		case OBJECT_BOX:
-			entity->box.sprite_path = box_on_spawn_data.sprite_path;
-			break;
 		case OBJECT_COUNTER:
 			break;
 	}
@@ -551,17 +520,6 @@ static bool set_counter_name_called;
 void game_fn_set_counter_name(char *name) {
 	SET_CALLED(counter_name);
 	counter_on_spawn_data.name = name;
-}
-
-static bool set_box_sprite_path_called;
-void game_fn_set_box_sprite_path(char *sprite_path) {
-	SET_CALLED(box_sprite_path);
-	box_on_spawn_data.sprite_path = sprite_path;
-}
-static bool set_box_name_called;
-void game_fn_set_box_name(char *name) {
-	SET_CALLED(box_name);
-	box_on_spawn_data.name = name;
 }
 
 static bool set_bullet_density_called;
@@ -580,11 +538,6 @@ void game_fn_set_bullet_name(char *name) {
 	bullet_on_spawn_data.name = name;
 }
 
-static bool set_gun_companion_called;
-void game_fn_set_gun_companion(char *companion) {
-	SET_CALLED(gun_companion);
-	gun_on_spawn_data.companion = companion;
-}
 static bool set_gun_rounds_per_minute_called;
 void game_fn_set_gun_rounds_per_minute(i32 rounds_per_minute) {
 	SET_CALLED(gun_rounds_per_minute);
@@ -612,14 +565,12 @@ static bool call_on_spawn(struct entity *entity, void *on_fns) {
 			set_gun_name_called = false;
 			set_gun_sprite_path_called = false;
 			set_gun_rounds_per_minute_called = false;
-			set_gun_companion_called = false;
 
 			cast_on_fns->spawn(entity->globals);
 
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_name);
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_sprite_path);
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_rounds_per_minute);
-			ASSERT_ON_SPAWN_PROPERTY_SET(set_gun_companion);
 
 			break;
 		}
@@ -636,20 +587,6 @@ static bool call_on_spawn(struct entity *entity, void *on_fns) {
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_name);
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_sprite_path);
 			ASSERT_ON_SPAWN_PROPERTY_SET(set_bullet_density);
-
-			break;
-		}
-		case OBJECT_BOX: {
-			struct box_on_fns *cast_on_fns = on_fns;
-			ASSERT_HAS_ON_SPAWN();
-
-			set_box_name_called = false;
-			set_box_sprite_path_called = false;
-
-			cast_on_fns->spawn(entity->globals);
-
-			ASSERT_ON_SPAWN_PROPERTY_SET(set_box_name);
-			ASSERT_ON_SPAWN_PROPERTY_SET(set_box_sprite_path);
 
 			break;
 		}
@@ -1004,21 +941,6 @@ static void play_collision_sound(b2ContactHitEvent *event) {
 	PlaySound(sound);
 }
 
-static void spawn_companion(char *name) {
-	struct grug_file *file = grug_get_entity_file(name);
-
-	struct entity *entity = spawn_entity(OBJECT_BOX, file);
-	if (!entity) {
-		return;
-	}
-
-	b2BodyDef body_def = b2DefaultBodyDef();
-	body_def.type = b2_dynamicBody;
-	body_def.position = (b2Vec2){ 50.0f, 100.0f };
-
-	add_body(entity, body_def, false, true);
-}
-
 static struct entity *spawn_gun(struct grug_file *file, b2Vec2 pos) {
 	b2BodyDef body_def = b2DefaultBodyDef();
 	body_def.position = pos;
@@ -1030,56 +952,7 @@ static struct entity *spawn_gun(struct grug_file *file, b2Vec2 pos) {
 
 	add_body(entity, body_def, true, false);
 
-	spawn_companion(gun_on_spawn_data.companion);
-
 	return gun_entity;
-}
-
-static void spawn_boxes(struct grug_file *file) {
-	int spawned_box_count = 160;
-
-	for (int i = 0; i < spawned_box_count; i++) {
-		struct entity *entity = spawn_entity(OBJECT_BOX, file);
-		if (!entity) {
-			break;
-		}
-
-		// Since the box may use a game fn to pick a random sprite_path,
-		// we load the texture of every individual box
-		Texture texture = LoadTexture(entity->box.sprite_path);
-		assert(texture.id > 0);
-
-		b2BodyDef body_def = b2DefaultBodyDef();
-		body_def.type = b2_dynamicBody;
-		body_def.position = (b2Vec2){ -100.0f, (i - spawned_box_count / 2) * texture.height + 1000.0f };
-
-		UnloadTexture(texture);
-
-		add_body(entity, body_def, false, true);
-	}
-}
-
-static void spawn_ground(struct grug_file *file) {
-	int ground_entity_count = 16;
-
-	for (int i = 0; i < ground_entity_count; i++) {
-		struct entity *entity = spawn_entity(OBJECT_BOX, file);
-		if (!entity) {
-			break;
-		}
-
-		// Since the box may use a game fn to pick a random sprite_path,
-		// we load the texture of every individual box
-		Texture texture = LoadTexture(entity->box.sprite_path);
-		assert(texture.id > 0);
-
-		b2BodyDef body_def = b2DefaultBodyDef();
-		body_def.position = (b2Vec2){ (i - ground_entity_count / 2) * texture.width, -100.0f };
-
-		UnloadTexture(texture);
-
-		add_body(entity, body_def, false, false);
-	}
 }
 
 static void push_file_containing_fn(struct grug_file *file) {
@@ -1159,7 +1032,6 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 
 static void reload_gun(struct grug_file *gun_file) {
 	reload_entity(gun, gun_file);
-	spawn_companion(gun_on_spawn_data.companion);
 }
 
 static void reload_modified_resources(void) {
@@ -1231,40 +1103,17 @@ static void update(struct timespec *previous_round_fired_time) {
 	struct grug_file *gun_file = get_type_files("gun")[gun_index];
 	size_t gun_count = type_files_size;
 
-	struct grug_file **box_files = get_type_files("box");
-
-	struct grug_file *concrete_file = NULL;
-	for (size_t i = 0; i < type_files_size; i++) {
-		struct grug_file *box_file = box_files[i];
-		if (streq(box_file->entity, "vanilla:concrete")) {
-			concrete_file = box_file;
-		}
-	}
-	assert(concrete_file && "Expected 'vanilla:concrete' to be present, for forming the ground");
-
-	struct grug_file *crate_file = NULL;
-	for (size_t i = 0; i < type_files_size; i++) {
-		struct grug_file *box_file = box_files[i];
-		if (streq(box_file->entity, "vanilla:crate")) {
-			crate_file = box_file;
-		}
-	}
-	assert(crate_file && "Expected 'vanilla:crate' to be present, for having crates that fall down");
-
 	static bool initialized = false;
 	if (!initialized) {
 		initialized = true;
 
-		b2Vec2 pos = { 100.0f, 0 };
+		b2Vec2 pos = { 50.0f, 0 };
 
 		gun = spawn_gun(gun_file, pos);
 
 		free(gun->globals);
 		gun->globals = malloc(gun_file->globals_size);
 		gun_file->init_globals_fn(gun->globals, gun->id);
-
-		spawn_ground(concrete_file);
-		spawn_boxes(crate_file);
 	}
 
 	float mouse_movement = GetMouseWheelMove();
@@ -1284,11 +1133,11 @@ static void update(struct timespec *previous_round_fired_time) {
 	if (IsKeyPressed(KEY_B)) {
 		draw_bounding_box = !draw_bounding_box;
 	}
-	// Clear bullets and boxes
+	// Clear bullets
 	if (IsKeyPressed(KEY_C)) {
 		for (size_t i = entities_size; i > 0; i--) {
 			enum entity_type type = entities[i - 1].type;
-			if (type == OBJECT_BULLET || (type == OBJECT_BOX && streq(entities[i - 1].grug_entity, "vanilla:crate"))) {
+			if (type == OBJECT_BULLET) {
 				despawn_entity(i - 1);
 			}
 		}
@@ -1302,9 +1151,6 @@ static void update(struct timespec *previous_round_fired_time) {
 	}
 	if (IsKeyPressed(KEY_P)) {
 		paused = !paused;
-	}
-	if (IsKeyPressed(KEY_S)) {
-		spawn_boxes(crate_file);
 	}
 
 	if (!paused) {
