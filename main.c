@@ -1254,10 +1254,6 @@ static void update(struct timespec *previous_round_fired_time) {
 
 		gun = spawn_gun(gun_file, pos);
 
-		free(gun->globals);
-		gun->globals = malloc(gun_file->globals_size);
-		gun_file->init_globals_fn(gun->globals, gun->id);
-
 		spawn_ground(concrete_file);
 		spawn_boxes(crate_file);
 	}
