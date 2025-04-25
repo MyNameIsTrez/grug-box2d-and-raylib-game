@@ -493,15 +493,15 @@ static void despawn_entity(size_t entity_index) {
 
 	call_on_despawn(entity, entity->on_fns);
 
-	if (entities[entity_index].texture.id > 0) {
-		UnloadTexture(entities[entity_index].texture);
+	if (entity->texture.id > 0) {
+		UnloadTexture(entity->texture);
 
-		free(entities[entity_index].texture_path);
+		free(entity->texture_path);
 
-		b2DestroyBody(entities[entity_index].body_id);
+		b2DestroyBody(entity->body_id);
 	}
 
-	struct i32_map *map = entities[entity_index].i32_map;
+	struct i32_map *map = entity->i32_map;
 	for (size_t i = 0; i < map->size; i++) {
 		free(map->keys[i]);
 	}
@@ -509,14 +509,14 @@ static void despawn_entity(size_t entity_index) {
 
 	entities[entity_index] = entities[--entities_size];
 
-	if (entities[entity_index].type == OBJECT_GUN) {
-		gun = entities + entity_index;
+	if (entity->type == OBJECT_GUN) {
+		gun = entity;
 	}
 
 	// If the removed entity wasn't at the very end of the entities array,
 	// update entity_index's userdata
-	if (entity_index < entities_size && entities[entity_index].texture.id > 0) {
-		b2Body_SetUserData(entities[entity_index].body_id, (void *)entity_index);
+	if (entity_index < entities_size && entity->texture.id > 0) {
+		b2Body_SetUserData(entity->body_id, (void *)entity_index);
 	}
 }
 
@@ -1430,7 +1430,8 @@ int main(void) {
 		update(&previous_round_fired_time);
 	}
 
-	// TODO: Are these necessary?
+	// Freeing at the end of a program isn't necessary,
+	// but it stops LeakSanitizer from complaining
 	UnloadTexture(background_texture);
 	for (size_t i = 0; i < entities_size; i++) {
 		UnloadTexture(entities[i].texture);
