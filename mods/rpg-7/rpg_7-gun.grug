@@ -1,4 +1,4 @@
-counter_id: id = null_id
+counter_id: id = spawn_counter("shots_counter")
 
 on_spawn() {
     set_gun_name("RPG-7")
@@ -6,7 +6,6 @@ on_spawn() {
     set_gun_rounds_per_minute(600)
     set_gun_companion("vanilla:crate")
 
-    counter_id = spawn_counter("shots_counter")
     map_set_i32(counter_id, "shots", 0)
 }
 

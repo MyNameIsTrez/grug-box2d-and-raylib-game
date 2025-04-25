@@ -31,7 +31,7 @@
 #define SET_CALLED(property) { \
 	if (set_ ## property ## _called) { \
 		snprintf(message, sizeof(message), "set_" #property "() was called twice by on_spawn()\n"); \
-		add_message(); \
+		grug_game_function_error_happened(message);\
 	} else { \
 		set_ ## property ## _called = true; \
 	} \
@@ -40,7 +40,7 @@
 #define ASSERT_HAS_ON_SPAWN() { \
 	if (!cast_on_fns->spawn) { \
 		snprintf(message, sizeof(message), "%s is missing on_spawn()\n", entity->grug_entity); \
-		add_message(); \
+		grug_game_function_error_happened(message);\
 		return true; \
 	} \
 }
@@ -48,7 +48,7 @@
 #define ASSERT_ON_SPAWN_PROPERTY_SET(property) { \
 	if (!property ## _called) { \
 		snprintf(message, sizeof(message), "%s its on_spawn() did not call " #property "()\n", entity->grug_entity); \
-		add_message(); \
+		grug_game_function_error_happened(message);\
 		return true; \
 	} \
 }
@@ -237,7 +237,7 @@ static size_t get_entity_index_from_entity_id(u64 id) {
 	}
 
 	snprintf(message, sizeof(message), "Failed to find the entity with ID %ld\n", id);
-	add_message();
+	grug_game_function_error_happened(message);
 
 	return SIZE_MAX;
 }
@@ -285,8 +285,7 @@ void game_fn_map_set_i32(u64 id, char *key, i32 value) {
 	if (i == UINT32_MAX) {
 		if (map->size >= MAX_I32_MAP_ENTRIES) {
 			snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld has %d entries, which exceeds MAX_I32_MAP_ENTRIES\n", id, MAX_I32_MAP_ENTRIES);
-			add_message();
-
+			grug_game_function_error_happened(message);
 			return;
 		}
 
@@ -315,8 +314,7 @@ i32 game_fn_map_get_i32(u64 id, char *key) {
 
 	if (map->size == 0) {
 		snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld is empty, so can't contain the key '%s'\n", id, key);
-		add_message();
-
+		grug_game_function_error_happened(message);
 		return -1;
 	}
 
@@ -325,8 +323,7 @@ i32 game_fn_map_get_i32(u64 id, char *key) {
 	while (true) {
 		if (i == UINT32_MAX) {
 			snprintf(message, sizeof(message), "The i32 map of the entity with ID %ld doesn't contain the key '%s'\n", id, key);
-			add_message();
-
+			grug_game_function_error_happened(message);
 			break;
 		}
 
@@ -673,8 +670,7 @@ static bool call_on_spawn(struct entity *entity, void *on_fns) {
 static struct entity *spawn_entity(enum entity_type type, struct grug_file *file) {
 	if (entities_size >= MAX_ENTITIES) {
 		snprintf(message, sizeof(message), "Won't spawn entity, as there are already %d entities, exceeding MAX_ENTITIES\n", MAX_ENTITIES);
-		add_message();
-
+		grug_game_function_error_happened(message);
 		return NULL;
 	}
 
@@ -1407,7 +1403,7 @@ static void runtime_error_handler(char *reason, enum grug_runtime_error_type typ
 int main(void) {
 	// SetTargetFPS(60);
 
-	if (grug_init(runtime_error_handler, "mod_api.json", "mods")) {
+	if (grug_init(runtime_error_handler, "mod_api.json", "mods", 10)) {
 		fprintf(stderr, "grug_init() error: %s (detected by grug.c:%d)\n", grug_error.msg, grug_error.grug_c_line_number);
 		return EXIT_FAILURE;
 	}
