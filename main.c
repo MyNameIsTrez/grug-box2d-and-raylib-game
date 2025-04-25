@@ -1136,11 +1136,10 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 
 	entity->on_fns = file->on_fns;
 
-	// call_on_despawn() must come after entity->on_fns has been updated,
-	// since on_fns will otherwise be a dangling pointer
+	// call_on_despawn() must come *after* entity->on_fns its dangling pointer has been updated
 	call_on_despawn(entity, entity->on_fns);
 
-	if (call_on_spawn(entity, file->on_fns)) {
+	if (call_on_spawn(entity, entity->on_fns)) {
 		return;
 	}
 
