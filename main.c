@@ -1127,21 +1127,18 @@ static void reload_entity_shape(struct entity *entity, char *texture_path) {
 	entity->shape_id = add_shape(entity->body_id, entity->texture, entity->enable_hit_events, entity->type == OBJECT_BULLET ? entity->bullet.density : 1.0f);
 }
 
+// The reason this function doesn't call call_on_despawn(),
+// is because the old .so has already been closed by grug.
+// Calling the new on_despawn() grug function instead would easily crash the game,
+// as the new on_despawn() function might try accessing a global that previously didn't exist.
 static void reload_entity(struct entity *entity, struct grug_file *file) {
 	entity->dll = file->dll;
-
-	entity->on_fns = file->on_fns;
-
-	// call_on_despawn() must come *after* entity->on_fns its dangling pointer has been updated
-	// TODO: When the on_despawn() grug function accesses globals
-	//       that did not exist previously, then this call can cause a crash.
-	//       In order to work around this issue, grug needs to delay the closing
-	//       of .so files by one tick, where the game can then call it a second time.
-	call_on_despawn(entity, entity->on_fns);
 
 	free(entity->globals);
 	entity->globals = malloc(file->globals_size);
 	file->init_globals_fn(entity->globals, entity->id);
+
+	entity->on_fns = file->on_fns;
 
 	if (call_on_spawn(entity, entity->on_fns)) {
 		return;
@@ -1157,7 +1154,10 @@ static void reload_entity(struct entity *entity, struct grug_file *file) {
 }
 
 static void reload_gun(struct grug_file *gun_file) {
+	call_on_despawn(gun, gun->on_fns);
+
 	reload_entity(gun, gun_file);
+
 	spawn_companion(gun_on_spawn_data.companion);
 }
 
