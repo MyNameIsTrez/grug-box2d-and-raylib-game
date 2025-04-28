@@ -430,7 +430,7 @@ static char *get_texture_path(struct entity *entity) {
 		case OBJECT_BOX:
 			return box_on_spawn_data.sprite_path;
 		case OBJECT_COUNTER:
-			break;
+			return NULL;
 	}
 	assert(false);
 }
