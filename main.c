@@ -228,7 +228,7 @@ static u32 elf_hash(const char *namearg) {
 	return h & 0x0fffffff;
 }
 
-static bool streq(char *a, char *b) {
+static bool streq(const char *a, const char *b) {
 	return strcmp(a, b) == 0;
 }
 
@@ -409,7 +409,10 @@ static char *get_texture_path(struct entity *entity) {
 		case OBJECT_COUNTER:
 			break;
 	}
+
+	// Unreachable
 	assert(false);
+	return NULL;
 }
 
 static b2Vec2 get_bullet_muzzle_pos(struct entity *entity, float x, float y) {
@@ -1321,7 +1324,7 @@ static void update(struct timespec *previous_round_fired_time) {
 	draw();
 }
 
-static void runtime_error_handler(char *reason, enum grug_runtime_error_type type, char *on_fn_name, char *on_fn_path) {
+static void runtime_error_handler(const char *reason, enum grug_runtime_error_type type, const char *on_fn_name, const char *on_fn_path) {
 	(void)type;
 
 	snprintf(message, sizeof(message), "grug runtime error in %s(): %s, in %s\n", on_fn_name, reason, on_fn_path);
@@ -1333,7 +1336,7 @@ static void runtime_error_handler(char *reason, enum grug_runtime_error_type typ
 int main(void) {
 	// SetTargetFPS(60);
 
-	if (grug_init(runtime_error_handler, "mod_api.json", "mods")) {
+	if (grug_init(runtime_error_handler, "mod_api.json", "mods", "mod_dlls", 10)) {
 		fprintf(stderr, "grug_init() error: %s (detected by grug.c:%d)\n", grug_error.msg, grug_error.grug_c_line_number);
 		return EXIT_FAILURE;
 	}
