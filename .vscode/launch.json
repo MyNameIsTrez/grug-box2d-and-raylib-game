@@ -7,19 +7,7 @@
       "request": "launch",
       "cwd": "${workspaceRoot}",
       "program": "${workspaceRoot}/build/game",
-      "preLaunchTask": "Rebuild",
-      "setupCommands": [
-        {
-          "description": "Don't break on SIGSEGV, since it is caught by grug.c",
-          "text": "handle SIGSEGV nostop",
-          "ignoreFailures": false
-        },
-        {
-          "description": "Don't break on SIGFPE, since it is caught by grug.c",
-          "text": "handle SIGFPE nostop",
-          "ignoreFailures": false
-        }
-      ]
+      "preLaunchTask": "Rebuild"
     }
   ]
 }
